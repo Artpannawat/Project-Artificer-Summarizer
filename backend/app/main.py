@@ -1,6 +1,11 @@
-from fastapi import FastAPI, HTTPException, Body, Depends
+from fastapi import FastAPI, HTTPException, Body, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+import os
+import tempfile
+from docx import Document
+import pdfplumber
 from .summarizer.text_processor import TextProcessor
 from .summarizer.summarization_model import SummarizationModel
 from .models.user import UserSchema, UserLoginSchema, TokenSchema
@@ -28,6 +33,72 @@ summarization_model = SummarizationModel()
 class TextRequest(BaseModel):
     text: str
     num_sentences: int | None = 5
+
+
+def read_text_file(file_path: str) -> str:
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except UnicodeDecodeError:
+        with open(file_path, 'r', encoding='latin-1') as f:
+            return f.read()
+
+
+def read_docx_file(file_path: str) -> str:
+    try:
+        doc = Document(file_path)
+        parts: list[str] = []
+        for paragraph in doc.paragraphs:
+            if paragraph.text and paragraph.text.strip():
+                parts.append(paragraph.text)
+        # Optionally read tables as well
+        for table in getattr(doc, 'tables', []):
+            for row in table.rows:
+                row_text = [cell.text for cell in row.cells if cell.text and cell.text.strip()]
+                if row_text:
+                    parts.append(" \t ".join(row_text))
+        return "\n".join(parts).strip()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading DOCX file: {str(e)}")
+
+
+def read_pdf_file(file_path: str) -> str:
+    try:
+        parts: list[str] = []
+        with pdfplumber.open(file_path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                if text.strip():
+                    parts.append(text)
+        content = "\n\n".join(parts).strip()
+        if not content:
+            raise HTTPException(status_code=400, detail="No extractable text found in PDF. The PDF may be scanned images.")
+        return content
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading PDF file: {str(e)}")
+
+
+def extract_text_from_file(file: UploadFile) -> str:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
+        content = file.file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+    try:
+        ext = os.path.splitext(file.filename.lower())[1]
+        if ext == '.txt':
+            text = read_text_file(tmp_path)
+        elif ext == '.docx':
+            text = read_docx_file(tmp_path)
+        elif ext == '.pdf':
+            text = read_pdf_file(tmp_path)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+        return text.strip()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @app.get("/health")
@@ -74,3 +145,33 @@ def summarize_text(request: TextRequest):
         return {"original_text": request.text, "summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/summarize-file")
+async def summarize_file(file: UploadFile = File(...), num_sentences: int = 5):
+    try:
+        allowed = ['.txt', '.docx', '.pdf']
+        ext = os.path.splitext(file.filename.lower())[1]
+        if ext not in allowed:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type. Allowed types: {', '.join(allowed)}")
+
+        original_text = extract_text_from_file(file)
+        if not original_text.strip():
+            raise HTTPException(status_code=400, detail="File is empty or contains no readable text.")
+
+        processed_text = text_processor.clean_text(original_text)
+        summary = summarization_model.summarize(processed_text, num_sentences=num_sentences or 5)
+
+        return JSONResponse(
+            content={
+                "original_text": original_text,
+                "summary": summary,
+                "filename": file.filename,
+                "file_size": len(original_text),
+                "status": "success"
+            },
+            status_code=200
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File processing failed: {str(e)}")

@@ -5,6 +5,7 @@ python-crfsuite
 scikit-learn
 pydantic>=2
 python-docx
+pdfplumber
 email-validator
 python-decouple
 motor
