@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pythainlp
+python-crfsuite
+scikit-learn
+pydantic>=2
+python-docx
+email-validator
+python-decouple
+motor
+passlib[bcrypt]
+PyJWT
+numpy
