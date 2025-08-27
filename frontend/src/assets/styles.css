@@ -1,90 +1,370 @@
+/* Modern Purple Theme Styles */
+:root {
+  --primary-purple: #8B5CF6;
+  --secondary-purple: #A855F7;
+  --light-purple: #F3E8FF;
+  --dark-purple: #6D28D9;
+  --accent-purple: #DDD6FE;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --text-light: #9CA3AF;
+  --background-main: #FAFBFC;
+  --background-card: #FFFFFF;
+  --border-light: #E5E7EB;
+  --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-large: 0 10px 25px rgba(139, 92, 246, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f4f7f9;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #E2E8F0 100%);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.artificer-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Modern Professional Navbar */
+.modern-navbar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  gap: 2rem;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.navbar-center {
+  flex: 1;
+  text-align: center;
+  max-width: 500px;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.app-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-light);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* User Profile Section */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.user-profile:hover {
+  background: rgba(139, 92, 246, 0.1);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-medium);
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-status {
+  font-size: 0.75rem;
+  color: var(--primary-purple);
+  font-weight: 500;
+}
+
+.dropdown-arrow {
+  color: var(--text-light);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.user-profile.show .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Modern Dropdown Menu */
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 280px;
+  background: var(--background-card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-large);
+  border: 1px solid var(--border-light);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+.profile-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-content {
+  padding: 0.75rem;
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin: -0.75rem -0.75rem 0.5rem -0.75rem;
+  background: linear-gradient(135deg, var(--light-purple), rgba(168, 85, 247, 0.1));
+  border-radius: 12px 12px 0 0;
+}
+
+.user-avatar-large {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-name-large {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-email {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0.5rem 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background: var(--light-purple);
+  color: var(--dark-purple);
+  transform: translateX(4px);
+}
+
+.dropdown-item svg {
+  color: var(--text-light);
+  transition: color 0.2s ease;
+}
+
+.dropdown-item:hover svg {
+  color: var(--primary-purple);
+}
+
+.logout-item:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+
+.logout-item:hover svg {
+  color: #DC2626;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+}
+
+.content-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.main-prompt {
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 1rem 0;
+  line-height: 1.2;
+}
+
+.main-description {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.content-body {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.authenticated-content {
+  width: 100%;
+  max-width: 800px;
+}
+
+.auth-content {
+  width: 100%;
+  max-width: 450px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .navbar-content {
+    padding: 1rem;
+    gap: 1rem;
   }
   
-  .artificer-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    padding: 20px;
+  .navbar-center {
+    display: none;
   }
   
-  .artificer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 1200px;
-    background: linear-gradient(90deg, #e0e7f7, #f7f9ff);
-    padding: 10px 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-    margin-bottom: 20px;
+  .main-prompt {
+    font-size: 2rem;
   }
   
-  .logo {
-    font-size: 24px;
-    font-weight: bold;
-    color: #5d5dff;
-  }
-  
-  .title-section h1 {
-    font-size: 20px;
-    color: #444;
-  }
-  
-  .user-profile {
-    position: relative;
-  }
-  
-  .user-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-  }
-  
-  .profile-dropdown {
-    position: absolute;
-    top: 50px;
-    right: 0;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    list-style: none;
-    padding: 10px;
-    margin: 0;
-    display: none; /* Hide by default */
-  }
-  
-  .user-profile:hover .profile-dropdown {
-    display: block;
-  }
-  
-  .profile-dropdown li {
-    padding: 8px 12px;
-    cursor: pointer;
-    white-space: nowrap;
+  .main-description {
+    font-size: 1rem;
   }
   
   .main-content {
-    width: 100%;
-    max-width: 1200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    padding: 1rem;
   }
   
-  .prompt {
-    font-size: 24px;
-    color: #555;
-    margin-bottom: 20px;
+  .user-info {
+    display: none;
   }
+  
+  .profile-dropdown {
+    min-width: 240px;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 1.25rem;
+  }
+  
+  .main-prompt {
+    font-size: 1.75rem;
+  }
+}
