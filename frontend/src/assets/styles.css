@@ -23,7 +23,7 @@ body {
     align-items: center;
     width: 100%;
     max-width: 1200px;
-    background: linear-gradient(90deg, #e0e7f7, #f7f9ff);
+    background: linear-gradient(90deg, #5a189a, #9d4edd, #c77dff);
     padding: 10px 20px;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
@@ -62,11 +62,7 @@ body {
     list-style: none;
     padding: 10px;
     margin: 0;
-    display: none; /* Hide by default */
-  }
-  
-  .user-profile:hover .profile-dropdown {
-    display: block;
+    display: none; /* Hidden controlled by v-show */
   }
   
   .profile-dropdown li {
@@ -87,4 +83,13 @@ body {
     font-size: 24px;
     color: #555;
     margin-bottom: 20px;
+  }
+
+  /* Purple luxurious theme */
+  .artificer-header {
+    background: linear-gradient(90deg, #5a189a, #9d4edd, #c77dff);
+  }
+
+  body {
+    background: #f8f6ff;
   }
