@@ -1,0 +1,220 @@
+import io
+import os
+from typing import Union
+from fastapi import UploadFile, HTTPException
+import PyPDF2
+import fitz  # PyMuPDF
+import docx2txt
+from docx import Document
+
+
+class FileProcessor:
+    """
+    Class for processing various document formats (PDF, DOC, DOCX, TXT)
+    and extracting text content for summarization.
+    """
+    
+    SUPPORTED_FORMATS = {
+        'application/pdf': 'pdf',
+        'application/msword': 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'text/plain': 'txt'
+    }
+    
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    
+    def __init__(self):
+        pass
+    
+    async def extract_text_from_file(self, file: UploadFile) -> str:
+        """
+        Extract text content from uploaded file based on its format.
+        
+        Args:
+            file: FastAPI UploadFile object
+            
+        Returns:
+            str: Extracted text content
+            
+        Raises:
+            HTTPException: If file format is not supported or extraction fails
+        """
+        # Validate file size
+        content = await file.read()
+        if len(content) > self.MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="ขนาดไฟล์เกิน 10MB")
+        
+        # Reset file pointer
+        await file.seek(0)
+        
+        # Determine file format
+        file_format = self._get_file_format(file)
+        
+        try:
+            if file_format == 'pdf':
+                text = await self._extract_from_pdf(content)
+            elif file_format == 'docx':
+                text = await self._extract_from_docx(content)
+            elif file_format == 'doc':
+                text = await self._extract_from_doc(content)
+            elif file_format == 'txt':
+                text = await self._extract_from_txt(content)
+            else:
+                raise HTTPException(status_code=400, detail="รองรับเฉพาะไฟล์ PDF, DOC, DOCX, TXT เท่านั้น")
+            
+            if not text or len(text.strip()) < 10:
+                raise HTTPException(status_code=400, detail="ไม่พบเนื้อหาในไฟล์ หรือเนื้อหาสั้นเกินไป")
+            
+            return text.strip()
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการประมวลผลไฟล์: {str(e)}")
+    
+    def _get_file_format(self, file: UploadFile) -> str:
+        """
+        Determine file format from content type or filename extension.
+        """
+        # Check content type first
+        if file.content_type in self.SUPPORTED_FORMATS:
+            return self.SUPPORTED_FORMATS[file.content_type]
+        
+        # Fallback to file extension
+        if file.filename:
+            filename_lower = file.filename.lower()
+            if filename_lower.endswith('.pdf'):
+                return 'pdf'
+            elif filename_lower.endswith('.docx'):
+                return 'docx'
+            elif filename_lower.endswith('.doc'):
+                return 'doc'
+            elif filename_lower.endswith('.txt'):
+                return 'txt'
+        
+        raise HTTPException(status_code=400, detail="ไม่สามารถระบุประเภทไฟล์ได้")
+    
+    async def _extract_from_pdf(self, content: bytes) -> str:
+        """Extract text from PDF file using PyMuPDF (more reliable than PyPDF2)"""
+        try:
+            # Try PyMuPDF first (better for complex PDFs)
+            pdf_document = fitz.open(stream=content, filetype="pdf")
+            text = ""
+            
+            for page_num in range(pdf_document.page_count):
+                page = pdf_document.load_page(page_num)
+                text += page.get_text() + "\n"
+            
+            pdf_document.close()
+            
+            if text.strip():
+                return text
+            
+            # Fallback to PyPDF2 if PyMuPDF returns empty
+            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+            text = ""
+            
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+            
+            return text
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
+    
+    async def _extract_from_docx(self, content: bytes) -> str:
+        """Extract text from DOCX file"""
+        try:
+            # Method 1: Using docx2txt (simpler and more reliable)
+            text = docx2txt.process(io.BytesIO(content))
+            
+            if text.strip():
+                return text
+            
+            # Method 2: Using python-docx as fallback
+            doc = Document(io.BytesIO(content))
+            paragraphs = []
+            
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    paragraphs.append(paragraph.text.strip())
+            
+            # Also extract text from tables
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text.strip():
+                            paragraphs.append(cell.text.strip())
+            
+            return "\n".join(paragraphs)
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ DOCX ได้: {str(e)}")
+    
+    async def _extract_from_doc(self, content: bytes) -> str:
+        """Extract text from DOC file (legacy format)"""
+        try:
+            # For .doc files, we'll try to use docx2txt which sometimes works
+            # Note: .doc support is limited, recommend users to convert to .docx
+            text = docx2txt.process(io.BytesIO(content))
+            
+            if not text.strip():
+                raise HTTPException(
+                    status_code=400, 
+                    detail="ไม่สามารถอ่านไฟล์ .doc ได้ กรุณาแปลงเป็น .docx หรือ PDF"
+                )
+            
+            return text
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"ไฟล์ .doc อาจเสียหาย กรุณาแปลงเป็น .docx หรือ PDF: {str(e)}"
+            )
+    
+    async def _extract_from_txt(self, content: bytes) -> str:
+        """Extract text from TXT file"""
+        try:
+            # Try different encodings
+            encodings = ['utf-8', 'utf-8-sig', 'cp874', 'iso-8859-1', 'windows-1252']
+            
+            for encoding in encodings:
+                try:
+                    text = content.decode(encoding)
+                    return text
+                except UnicodeDecodeError:
+                    continue
+            
+            # If all encodings fail, use utf-8 with error handling
+            text = content.decode('utf-8', errors='replace')
+            return text
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ TXT ได้: {str(e)}")
+    
+    def validate_file(self, file: UploadFile) -> bool:
+        """
+        Validate uploaded file format and size.
+        
+        Args:
+            file: FastAPI UploadFile object
+            
+        Returns:
+            bool: True if file is valid
+            
+        Raises:
+            HTTPException: If file is invalid
+        """
+        # Check if file exists
+        if not file or not file.filename:
+            raise HTTPException(status_code=400, detail="ไม่พบไฟล์")
+        
+        # Check file format
+        try:
+            self._get_file_format(file)
+        except HTTPException:
+            raise HTTPException(status_code=400, detail="รองรับเฉพาะไฟล์ PDF, DOC, DOCX, TXT เท่านั้น")
+        
+        return True

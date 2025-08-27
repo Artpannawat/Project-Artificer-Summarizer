@@ -17,16 +17,117 @@
     </div>
     
     <div class="input-section">
-      <label class="input-label">
-        <span class="label-text">เนื้อหาที่ต้องการสรุป</span>
-        <span class="label-hint">วางข้อความหรือบทความที่ต้องการสรุปที่นี่</span>
-      </label>
-      <textarea 
-        v-model="inputText" 
-        placeholder="วางข้อความยาวๆ ที่นี่... ยิ่งมีเนื้อหามากยิ่งได้ผลลัพธ์ที่ดี" 
-        rows="8"
-        class="text-input"
-      ></textarea>
+      <!-- File Upload or Text Input Toggle -->
+      <div class="input-type-selector">
+        <button 
+          @click="inputType = 'text'" 
+          :class="['type-button', { 'active': inputType === 'text' }]"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+            <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+            <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+            <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          ข้อความ
+        </button>
+        <button 
+          @click="inputType = 'file'" 
+          :class="['type-button', { 'active': inputType === 'file' }]"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+            <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+            <path d="M9.5 12h5" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 9.5v5" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          อัปโหลดไฟล์
+        </button>
+      </div>
+
+      <!-- Text Input -->
+      <div v-if="inputType === 'text'" class="text-input-container">
+        <label class="input-label">
+          <span class="label-text">เนื้อหาที่ต้องการสรุป</span>
+          <span class="label-hint">วางข้อความหรือบทความที่ต้องการสรุปที่นี่</span>
+        </label>
+        <textarea 
+          v-model="inputText" 
+          placeholder="วางข้อความยาวๆ ที่นี่... ยิ่งมีเนื้อหามากยิ่งได้ผลลัพธ์ที่ดี" 
+          rows="8"
+          class="text-input"
+        ></textarea>
+      </div>
+
+      <!-- File Upload -->
+      <div v-else class="file-input-container">
+        <label class="input-label">
+          <span class="label-text">อัปโหลดไฟล์เอกสาร</span>
+          <span class="label-hint">รองรับไฟล์ PDF, DOC, DOCX, TXT (ขนาดสูงสุด 10MB)</span>
+        </label>
+        
+        <div class="file-upload-area" 
+             :class="{ 'drag-over': isDragOver, 'has-file': selectedFile }"
+             @drop="handleFileDrop"
+             @dragover.prevent="handleDragOver"
+             @dragleave="handleDragLeave"
+             @click="$refs.fileInput.click()">
+          
+          <input 
+            ref="fileInput"
+            type="file" 
+            @change="handleFileSelect"
+            accept=".pdf,.doc,.docx,.txt"
+            class="file-input-hidden"
+          />
+          
+          <div v-if="!selectedFile" class="upload-placeholder">
+            <div class="upload-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.5"/>
+                <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M12 11v6" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M9 14l3-3 3 3" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <div class="upload-text">
+              <p class="upload-primary">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+              <p class="upload-secondary">รองรับไฟล์ PDF, DOC, DOCX, TXT</p>
+            </div>
+          </div>
+
+          <div v-else class="file-preview">
+            <div class="file-info">
+              <div class="file-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+                  <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="file-details">
+                <p class="file-name">{{ selectedFile.name }}</p>
+                <p class="file-size">{{ formatFileSize(selectedFile.size) }}</p>
+              </div>
+            </div>
+            <button @click.stop="removeFile" class="remove-file-button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- File processing status -->
+        <div v-if="fileProcessing" class="file-processing">
+          <div class="processing-icon">
+            <svg class="loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 12a9 9 0 11-6.219-8.56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>กำลังประมวลผลไฟล์...</span>
+        </div>
+      </div>
     </div>
     
     <div class="controls-section">
@@ -46,7 +147,7 @@
       
       <button 
         @click="summarize" 
-        :disabled="loading || !inputText.trim()" 
+        :disabled="loading || (inputType === 'text' && !inputText.trim()) || (inputType === 'file' && !selectedFile)" 
         class="summarize-button"
         :class="{ 'loading': loading }"
       >
@@ -57,7 +158,7 @@
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
           <polyline points="10,15 15,10 21,4" stroke="currentColor" stroke-width="2"/>
         </svg>
-        {{ loading ? 'กำลังประมวลผล...' : 'สรุปเนื้อหา' }}
+        {{ loading ? 'กำลังประมวลผล...' : (inputType === 'file' ? 'สรุปไฟล์' : 'สรุปเนื้อหา') }}
       </button>
     </div>
     
@@ -116,30 +217,127 @@ export default {
       summary: '',
       loading: false,
       error: '',
-      backendUrl: 'http://127.0.0.1:8000'
+      backendUrl: 'http://127.0.0.1:8000',
+      inputType: 'text', // 'text' or 'file'
+      selectedFile: null,
+      fileProcessing: false,
+      isDragOver: false
     }
   },
   methods: {
     async summarize() {
       this.error = ''
       this.summary = ''
-      if (!this.inputText.trim()) {
-        this.error = 'กรุณากรอกข้อความ'
-        return
+      
+      // Check input based on type
+      if (this.inputType === 'text') {
+        if (!this.inputText.trim()) {
+          this.error = 'กรุณากรอกข้อความ'
+          return
+        }
+      } else if (this.inputType === 'file') {
+        if (!this.selectedFile) {
+          this.error = 'กรุณาเลือกไฟล์'
+          return
+        }
       }
+      
       this.loading = true
       try {
-        const res = await axios.post(`${this.backendUrl}/summarize`, {
-          text: this.inputText,
-          num_sentences: this.numSentences
-        })
-        this.summary = res.data.summary
+        let response
+        
+        if (this.inputType === 'text') {
+          // Text summarization
+          response = await axios.post(`${this.backendUrl}/summarize`, {
+            text: this.inputText,
+            num_sentences: this.numSentences
+          })
+        } else {
+          // File summarization
+          const formData = new FormData()
+          formData.append('file', this.selectedFile)
+          formData.append('num_sentences', this.numSentences.toString())
+          
+          response = await axios.post(`${this.backendUrl}/summarize-file`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          })
+        }
+        
+        this.summary = response.data.summary
       } catch (e) {
         this.error = e.response?.data?.detail || e.message
       } finally {
         this.loading = false
       }
     },
+    
+    // File handling methods
+    handleFileSelect(event) {
+      const file = event.target.files[0]
+      this.processSelectedFile(file)
+    },
+    
+    handleFileDrop(event) {
+      event.preventDefault()
+      this.isDragOver = false
+      const file = event.dataTransfer.files[0]
+      this.processSelectedFile(file)
+    },
+    
+    handleDragOver(event) {
+      event.preventDefault()
+      this.isDragOver = true
+    },
+    
+    handleDragLeave() {
+      this.isDragOver = false
+    },
+    
+    processSelectedFile(file) {
+      if (!file) return
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'application/msword', 
+                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                           'text/plain']
+      const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+      
+      const isValidType = allowedTypes.includes(file.type) || 
+                         allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+      
+      if (!isValidType) {
+        this.error = 'รองรับเฉพาะไฟล์ PDF, DOC, DOCX, TXT เท่านั้น'
+        return
+      }
+      
+      // Validate file size (10MB)
+      const maxSize = 10 * 1024 * 1024
+      if (file.size > maxSize) {
+        this.error = 'ขนาดไฟล์เกิน 10MB'
+        return
+      }
+      
+      this.selectedFile = file
+      this.error = ''
+    },
+    
+    removeFile() {
+      this.selectedFile = null
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = ''
+      }
+    },
+    
+    formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes'
+      const k = 1024
+      const sizes = ['Bytes', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(bytes) / Math.log(k))
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+    },
+    
     async copyToClipboard() {
       try {
         await navigator.clipboard.writeText(this.summary)
@@ -148,10 +346,16 @@ export default {
         console.error('Failed to copy text: ', err)
       }
     },
+    
     clearResults() {
       this.summary = ''
       this.error = ''
       this.inputText = ''
+      this.selectedFile = null
+      this.inputType = 'text'
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = ''
+      }
     }
   }
 }
@@ -222,6 +426,48 @@ export default {
   margin-bottom: 2rem;
 }
 
+/* Input Type Selector */
+.input-type-selector {
+  display: flex;
+  background: #F3F4F6;
+  border-radius: 12px;
+  padding: 0.25rem;
+  margin-bottom: 1.5rem;
+  gap: 0.25rem;
+}
+
+.type-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: #6B7280;
+}
+
+.type-button.active {
+  background: white;
+  color: #8B5CF6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.type-button:hover:not(.active) {
+  color: #374151;
+}
+
+/* Text Input Container */
+.text-input-container {
+  animation: fadeIn 0.3s ease;
+}
+
 .input-label {
   display: flex;
   flex-direction: column;
@@ -262,6 +508,161 @@ export default {
 
 .text-input::placeholder {
   color: #9CA3AF;
+}
+
+/* File Input Container */
+.file-input-container {
+  animation: fadeIn 0.3s ease;
+}
+
+.file-upload-area {
+  border: 2px dashed #E5E7EB;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(139, 92, 246, 0.02);
+  position: relative;
+}
+
+.file-upload-area:hover {
+  border-color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.file-upload-area.drag-over {
+  border-color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.1);
+  transform: scale(1.02);
+}
+
+.file-upload-area.has-file {
+  border-style: solid;
+  border-color: #8B5CF6;
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upload-icon {
+  color: #8B5CF6;
+  opacity: 0.7;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upload-primary {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+}
+
+.upload-secondary {
+  font-size: 0.875rem;
+  color: #6B7280;
+  margin: 0;
+}
+
+.file-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.file-icon {
+  color: #8B5CF6;
+}
+
+.file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.file-size {
+  font-size: 0.75rem;
+  color: #6B7280;
+  margin: 0;
+}
+
+.remove-file-button {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-file-button:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.1);
+}
+
+.file-processing {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 12px;
+  margin-top: 1rem;
+  color: #8B5CF6;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.processing-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Controls Section */
