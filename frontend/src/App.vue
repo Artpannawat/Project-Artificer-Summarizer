@@ -7,9 +7,9 @@
         <div class="title-section">
           <h1>เครื่องมือการสรุปบทความ</h1>
         </div>
-        <div class="user-profile">
+        <div class="user-profile" @click="toggleDropdown">
           <img src="/user-icon.svg" alt="User" class="user-icon">
-          <ul class="profile-dropdown">
+          <ul class="profile-dropdown" v-show="showDropdown">
             <li v-if="isAuthenticated">Profile</li>
             <li v-if="isAuthenticated" @click="logout">Logout</li>
             <li v-else>
@@ -49,7 +49,8 @@
     data() {
       return {
         isAuthenticated: false,
-        currentView: 'Login' // Start with the login view
+        currentView: 'Login', // Start with the login view
+        showDropdown: false
       };
     },
     created() {
@@ -61,6 +62,9 @@
       },
       onAuthenticated() {
         this.isAuthenticated = true;
+      },
+      toggleDropdown() {
+        this.showDropdown = !this.showDropdown;
       },
       logout() {
         localStorage.removeItem('token');
