@@ -113,7 +113,12 @@ async def summarize_file(
             "filename": file.filename,
             "file_type": file.content_type,
             "extracted_text_length": len(extracted_text),
-            "summary": summary
+            "summary": summary,
+            "processing_info": {
+                "original_length": len(extracted_text),
+                "summary_length": len(summary),
+                "compression_ratio": f"{(len(summary) / len(extracted_text) * 100):.1f}%" if extracted_text else "0%"
+            }
         }
         
     except HTTPException:

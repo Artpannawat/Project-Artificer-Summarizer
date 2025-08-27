@@ -115,8 +115,51 @@ class FileProcessor:
         
         raise HTTPException(status_code=400, detail="ไม่สามารถระบุประเภทไฟล์ได้")
     
+    def _clean_extracted_text(self, text: str) -> str:
+        """Clean and format extracted text from files"""
+        if not text:
+            return ""
+        
+        # Remove excessive whitespace
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Fix common extraction issues
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Space between camelCase
+        text = re.sub(r'([.!?])([A-Za-z])', r'\1 \2', text)  # Space after punctuation
+        text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)  # Space between letter and number
+        text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)  # Space between number and letter
+        
+        # Remove page numbers and headers/footers patterns
+        lines = text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Skip likely page numbers
+            if re.match(r'^\d+$', line):
+                continue
+            
+            # Skip very short lines (likely headers/footers)
+            if len(line) < 10:
+                continue
+            
+            # Skip lines that are mostly numbers or symbols
+            if len(re.sub(r'[^a-zA-Zก-๙]', '', line)) < len(line) * 0.5:
+                continue
+            
+            cleaned_lines.append(line)
+        
+        # Join lines with proper spacing
+        cleaned_text = ' '.join(cleaned_lines)
+        
+        # Final cleanup
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+        
+        return cleaned_text
+    
     async def _extract_from_pdf(self, content: bytes) -> str:
-        """Extract text from PDF file using available PDF libraries"""
+        """Enhanced PDF text extraction with better formatting"""
         if not HAS_PYMUPDF and not HAS_PYPDF2:
             raise HTTPException(
                 status_code=500, 
@@ -133,12 +176,23 @@ class FileProcessor:
                     
                     for page_num in range(pdf_document.page_count):
                         page = pdf_document.load_page(page_num)
-                        text += page.get_text() + "\n"
+                        
+                        # Get text with better formatting
+                        page_text = page.get_text("text")
+                        
+                        # Clean up the extracted text
+                        if page_text.strip():
+                            # Fix common PDF extraction issues
+                            page_text = re.sub(r'([a-z])([A-Z])', r'\1 \2', page_text)  # Add space between words
+                            page_text = re.sub(r'([.!?])([A-Za-z])', r'\1 \2', page_text)  # Add space after punctuation
+                            page_text = re.sub(r'\s+', ' ', page_text)  # Normalize whitespace
+                            
+                            text += page_text + "\n\n"
                     
                     pdf_document.close()
                     
                     if text.strip():
-                        return text
+                        return self._clean_extracted_text(text)
                 except Exception:
                     pass  # Try PyPDF2 as fallback
             
@@ -146,13 +200,18 @@ class FileProcessor:
             if HAS_PYPDF2:
                 try:
                     pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
-                    text = ""
                     
                     for page in pdf_reader.pages:
-                        text += page.extract_text() + "\n"
+                        page_text = page.extract_text()
+                        if page_text.strip():
+                            # Clean up the extracted text
+                            page_text = re.sub(r'([a-z])([A-Z])', r'\1 \2', page_text)
+                            page_text = re.sub(r'([.!?])([A-Za-z])', r'\1 \2', page_text)
+                            page_text = re.sub(r'\s+', ' ', page_text)
+                            text += page_text + "\n\n"
                     
                     if text.strip():
-                        return text
+                        return self._clean_extracted_text(text)
                 except Exception:
                     pass
             
@@ -168,7 +227,7 @@ class FileProcessor:
             raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
     
     async def _extract_from_docx(self, content: bytes) -> str:
-        """Extract text from DOCX file"""
+        """Enhanced DOCX text extraction with better formatting"""
         if not HAS_DOCX2TXT and not HAS_PYTHON_DOCX:
             raise HTTPException(
                 status_code=500, 
@@ -183,30 +242,45 @@ class FileProcessor:
                 try:
                     text = docx2txt.process(io.BytesIO(content))
                     if text.strip():
-                        return text
+                        return self._clean_extracted_text(text)
                 except Exception:
                     pass  # Try python-docx as fallback
             
-            # Method 2: Using python-docx as fallback
+            # Method 2: Using python-docx as fallback with better extraction
             if HAS_PYTHON_DOCX:
                 try:
                     doc = Document(io.BytesIO(content))
                     paragraphs = []
                     
+                    # Extract paragraphs with proper formatting
                     for paragraph in doc.paragraphs:
-                        if paragraph.text.strip():
-                            paragraphs.append(paragraph.text.strip())
+                        para_text = paragraph.text.strip()
+                        if para_text and len(para_text) > 3:  # Skip very short paragraphs
+                            # Check if it's a heading (usually shorter and may be important)
+                            if len(para_text) < 100 and not para_text.endswith('.'):
+                                para_text += '.'  # Add period for better sentence detection
+                            paragraphs.append(para_text)
                     
-                    # Also extract text from tables
+                    # Extract text from tables with better structure
                     for table in doc.tables:
+                        table_text = []
                         for row in table.rows:
+                            row_text = []
                             for cell in row.cells:
-                                if cell.text.strip():
-                                    paragraphs.append(cell.text.strip())
+                                cell_text = cell.text.strip()
+                                if cell_text:
+                                    row_text.append(cell_text)
+                            if row_text:
+                                table_text.append(' | '.join(row_text))
+                        
+                        if table_text:
+                            # Add table as a structured paragraph
+                            paragraphs.append('. '.join(table_text) + '.')
                     
-                    text = "\n".join(paragraphs)
+                    # Join paragraphs with proper spacing
+                    text = ' '.join(paragraphs)
                     if text.strip():
-                        return text
+                        return self._clean_extracted_text(text)
                 except Exception:
                     pass
             

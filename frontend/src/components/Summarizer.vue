@@ -195,6 +195,31 @@
       <div class="summary-content">
         <p>{{ summary }}</p>
       </div>
+      
+      <!-- Processing Statistics -->
+      <div v-if="processingInfo" class="processing-stats">
+        <div class="stats-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19 7h-4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>สถิติการประมวลผล</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">ข้อความต้นฉบับ:</span>
+            <span class="stat-value">{{ formatNumber(processingInfo.original_length) }} ตัวอักษร</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">ข้อความสรุป:</span>
+            <span class="stat-value">{{ formatNumber(processingInfo.summary_length) }} ตัวอักษร</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">อัตราการบีบอัด:</span>
+            <span class="stat-value compression">{{ processingInfo.compression_ratio }}</span>
+          </div>
+        </div>
+      </div>
       <div class="summary-actions">
         <button @click="copyToClipboard" class="copy-button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -232,7 +257,8 @@ export default {
       selectedFile: null,
       fileProcessing: false,
       isDragOver: false,
-      serverInfo: null
+      serverInfo: null,
+      processingInfo: null
     }
   },
   
@@ -296,6 +322,11 @@ export default {
         }
         
         this.summary = response.data.summary
+        
+        // Store processing info if available
+        if (response.data.processing_info) {
+          this.processingInfo = response.data.processing_info
+        }
       } catch (e) {
         this.error = e.response?.data?.detail || e.message
       } finally {
@@ -395,9 +426,14 @@ export default {
       this.inputText = ''
       this.selectedFile = null
       this.inputType = 'text'
+      this.processingInfo = null
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = ''
       }
+    },
+    
+    formatNumber(num) {
+      return new Intl.NumberFormat('th-TH').format(num)
     }
   }
 }
@@ -862,6 +898,86 @@ export default {
   margin: 0;
   line-height: 1.7;
   color: #374151;
+}
+
+/* Processing Statistics */
+.processing-stats {
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #8B5CF6;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 0.75rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.stat-value.compression {
+  background: linear-gradient(135deg, #8B5CF6, #A855F7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+@media (min-width: 480px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  
+  .stat-item {
+    flex-direction: column;
+    align-items: flex-start;
+    border-bottom: none;
+    border-right: 1px solid rgba(139, 92, 246, 0.1);
+    padding-right: 1rem;
+  }
+  
+  .stat-item:last-child {
+    border-right: none;
+  }
+  
+  .stat-label {
+    margin-bottom: 0.25rem;
+  }
 }
 
 .summary-actions {
