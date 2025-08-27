@@ -63,7 +63,12 @@
       <div v-else class="file-input-container">
         <label class="input-label">
           <span class="label-text">อัปโหลดไฟล์เอกสาร</span>
-          <span class="label-hint">รองรับไฟล์ PDF, DOC, DOCX, TXT (ขนาดสูงสุด 10MB)</span>
+          <span class="label-hint" v-if="serverInfo && serverInfo.file_processor_mode === 'simple'">
+            รองรับเฉพาะไฟล์ TXT (ขนาดสูงสุด 10MB) - ติดตั้ง dependencies เพิ่มเติมสำหรับ PDF/DOC
+          </span>
+          <span class="label-hint" v-else>
+            รองรับไฟล์ PDF, DOC, DOCX, TXT (ขนาดสูงสุด 10MB)
+          </span>
         </label>
         
         <div class="file-upload-area" 
@@ -77,7 +82,7 @@
             ref="fileInput"
             type="file" 
             @change="handleFileSelect"
-            accept=".pdf,.doc,.docx,.txt"
+            :accept="serverInfo && serverInfo.file_processor_mode === 'simple' ? '.txt' : '.pdf,.doc,.docx,.txt'"
             class="file-input-hidden"
           />
           
@@ -92,7 +97,12 @@
             </div>
             <div class="upload-text">
               <p class="upload-primary">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
-              <p class="upload-secondary">รองรับไฟล์ PDF, DOC, DOCX, TXT</p>
+              <p class="upload-secondary" v-if="serverInfo && serverInfo.file_processor_mode === 'simple'">
+                รองรับเฉพาะไฟล์ TXT
+              </p>
+              <p class="upload-secondary" v-else>
+                รองรับไฟล์ PDF, DOC, DOCX, TXT
+              </p>
             </div>
           </div>
 
@@ -221,10 +231,30 @@ export default {
       inputType: 'text', // 'text' or 'file'
       selectedFile: null,
       fileProcessing: false,
-      isDragOver: false
+      isDragOver: false,
+      serverInfo: null
     }
   },
+  
+  async created() {
+    // Check server capabilities
+    await this.checkServerCapabilities()
+  },
   methods: {
+    async checkServerCapabilities() {
+      try {
+        const response = await axios.get(`${this.backendUrl}/health`)
+        this.serverInfo = response.data
+        
+        // If server only supports TXT files, show warning
+        if (this.serverInfo.file_processor_mode === 'simple') {
+          console.warn('Server is running in simple mode - only TXT files are supported')
+        }
+      } catch (error) {
+        console.error('Failed to check server capabilities:', error)
+      }
+    },
+    
     async summarize() {
       this.error = ''
       this.summary = ''
@@ -298,17 +328,29 @@ export default {
     processSelectedFile(file) {
       if (!file) return
       
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/msword', 
-                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                           'text/plain']
-      const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+      // Check server capabilities
+      const isSimpleMode = this.serverInfo && this.serverInfo.file_processor_mode === 'simple'
+      
+      // Validate file type based on server capabilities
+      let allowedTypes, allowedExtensions, errorMessage
+      
+      if (isSimpleMode) {
+        allowedTypes = ['text/plain']
+        allowedExtensions = ['.txt']
+        errorMessage = 'รองรับเฉพาะไฟล์ TXT เท่านั้น (ติดตั้ง dependencies เพิ่มเติมสำหรับ PDF/DOC)'
+      } else {
+        allowedTypes = ['application/pdf', 'application/msword', 
+                       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                       'text/plain']
+        allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+        errorMessage = 'รองรับเฉพาะไฟล์ PDF, DOC, DOCX, TXT เท่านั้น'
+      }
       
       const isValidType = allowedTypes.includes(file.type) || 
                          allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
       
       if (!isValidType) {
-        this.error = 'รองรับเฉพาะไฟล์ PDF, DOC, DOCX, TXT เท่านั้น'
+        this.error = errorMessage
         return
       }
       

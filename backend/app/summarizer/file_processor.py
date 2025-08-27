@@ -2,10 +2,31 @@ import io
 import os
 from typing import Union
 from fastapi import UploadFile, HTTPException
-import PyPDF2
-import fitz  # PyMuPDF
-import docx2txt
-from docx import Document
+
+# Try to import optional dependencies
+try:
+    import PyPDF2
+    HAS_PYPDF2 = True
+except ImportError:
+    HAS_PYPDF2 = False
+
+try:
+    import fitz  # PyMuPDF
+    HAS_PYMUPDF = True
+except ImportError:
+    HAS_PYMUPDF = False
+
+try:
+    import docx2txt
+    HAS_DOCX2TXT = True
+except ImportError:
+    HAS_DOCX2TXT = False
+
+try:
+    from docx import Document
+    HAS_PYTHON_DOCX = True
+except ImportError:
+    HAS_PYTHON_DOCX = False
 
 
 class FileProcessor:
@@ -95,64 +116,119 @@ class FileProcessor:
         raise HTTPException(status_code=400, detail="ไม่สามารถระบุประเภทไฟล์ได้")
     
     async def _extract_from_pdf(self, content: bytes) -> str:
-        """Extract text from PDF file using PyMuPDF (more reliable than PyPDF2)"""
+        """Extract text from PDF file using available PDF libraries"""
+        if not HAS_PYMUPDF and not HAS_PYPDF2:
+            raise HTTPException(
+                status_code=500, 
+                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี PDF processing libraries"
+            )
+        
         try:
+            text = ""
+            
             # Try PyMuPDF first (better for complex PDFs)
-            pdf_document = fitz.open(stream=content, filetype="pdf")
-            text = ""
+            if HAS_PYMUPDF:
+                try:
+                    pdf_document = fitz.open(stream=content, filetype="pdf")
+                    
+                    for page_num in range(pdf_document.page_count):
+                        page = pdf_document.load_page(page_num)
+                        text += page.get_text() + "\n"
+                    
+                    pdf_document.close()
+                    
+                    if text.strip():
+                        return text
+                except Exception:
+                    pass  # Try PyPDF2 as fallback
             
-            for page_num in range(pdf_document.page_count):
-                page = pdf_document.load_page(page_num)
-                text += page.get_text() + "\n"
+            # Fallback to PyPDF2
+            if HAS_PYPDF2:
+                try:
+                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+                    text = ""
+                    
+                    for page in pdf_reader.pages:
+                        text += page.extract_text() + "\n"
+                    
+                    if text.strip():
+                        return text
+                except Exception:
+                    pass
             
-            pdf_document.close()
+            # If both methods fail
+            raise HTTPException(
+                status_code=500, 
+                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ PDF ได้ ไฟล์อาจเสียหายหรือมีการป้องกัน"
+            )
             
-            if text.strip():
-                return text
-            
-            # Fallback to PyPDF2 if PyMuPDF returns empty
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
-            text = ""
-            
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
-            
-            return text
-            
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
     
     async def _extract_from_docx(self, content: bytes) -> str:
         """Extract text from DOCX file"""
+        if not HAS_DOCX2TXT and not HAS_PYTHON_DOCX:
+            raise HTTPException(
+                status_code=500, 
+                detail="ไม่สามารถอ่านไฟล์ DOCX ได้ เนื่องจากไม่มี DOCX processing libraries"
+            )
+        
         try:
-            # Method 1: Using docx2txt (simpler and more reliable)
-            text = docx2txt.process(io.BytesIO(content))
+            text = ""
             
-            if text.strip():
-                return text
+            # Method 1: Using docx2txt (simpler and more reliable)
+            if HAS_DOCX2TXT:
+                try:
+                    text = docx2txt.process(io.BytesIO(content))
+                    if text.strip():
+                        return text
+                except Exception:
+                    pass  # Try python-docx as fallback
             
             # Method 2: Using python-docx as fallback
-            doc = Document(io.BytesIO(content))
-            paragraphs = []
+            if HAS_PYTHON_DOCX:
+                try:
+                    doc = Document(io.BytesIO(content))
+                    paragraphs = []
+                    
+                    for paragraph in doc.paragraphs:
+                        if paragraph.text.strip():
+                            paragraphs.append(paragraph.text.strip())
+                    
+                    # Also extract text from tables
+                    for table in doc.tables:
+                        for row in table.rows:
+                            for cell in row.cells:
+                                if cell.text.strip():
+                                    paragraphs.append(cell.text.strip())
+                    
+                    text = "\n".join(paragraphs)
+                    if text.strip():
+                        return text
+                except Exception:
+                    pass
             
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip():
-                    paragraphs.append(paragraph.text.strip())
+            # If both methods fail
+            raise HTTPException(
+                status_code=500, 
+                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ DOCX ได้ ไฟล์อาจเสียหายหรือไม่ถูกต้อง"
+            )
             
-            # Also extract text from tables
-            for table in doc.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        if cell.text.strip():
-                            paragraphs.append(cell.text.strip())
-            
-            return "\n".join(paragraphs)
-            
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ DOCX ได้: {str(e)}")
     
     async def _extract_from_doc(self, content: bytes) -> str:
         """Extract text from DOC file (legacy format)"""
+        if not HAS_DOCX2TXT:
+            raise HTTPException(
+                status_code=400, 
+                detail="ไม่สามารถอ่านไฟล์ .doc ได้ กรุณาแปลงเป็น .docx หรือ PDF"
+            )
+        
         try:
             # For .doc files, we'll try to use docx2txt which sometimes works
             # Note: .doc support is limited, recommend users to convert to .docx

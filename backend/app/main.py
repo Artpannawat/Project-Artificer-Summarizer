@@ -3,10 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from .summarizer.text_processor import TextProcessor
 from .summarizer.summarization_model import SummarizationModel
-from .summarizer.file_processor import FileProcessor
 from .models.user import UserSchema, UserLoginSchema, TokenSchema
 from .database.mongo import user_collection, create_unique_index, client
 from .auth.auth_handler import get_hashed_password, verify_password, sign_jwt, decode_jwt
+
+# Try to import full file processor, fallback to simple one
+try:
+    from .summarizer.file_processor import FileProcessor
+    file_processor = FileProcessor()
+    FILE_PROCESSOR_MODE = "full"
+except ImportError:
+    from .summarizer.simple_file_processor import SimpleFileProcessor
+    file_processor = SimpleFileProcessor()
+    FILE_PROCESSOR_MODE = "simple"
 
 app = FastAPI()
 
@@ -24,7 +33,6 @@ async def startup_db_client():
 
 text_processor = TextProcessor()
 summarization_model = SummarizationModel()
-file_processor = FileProcessor()
 
 
 class TextRequest(BaseModel):
@@ -39,7 +47,12 @@ async def health_check():
         await client.admin.command('ping')
     except Exception:
         db_ok = False
-    return {"status": "ok", "db": db_ok}
+    return {
+        "status": "ok", 
+        "db": db_ok,
+        "file_processor_mode": FILE_PROCESSOR_MODE,
+        "supported_file_types": "TXT only" if FILE_PROCESSOR_MODE == "simple" else "PDF, DOC, DOCX, TXT"
+    }
 
 @app.post("/register", response_model=TokenSchema, tags=["auth"])
 async def register_user(user: UserSchema = Body(...)):
