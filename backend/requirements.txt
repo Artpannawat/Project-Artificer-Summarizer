@@ -11,3 +11,7 @@ motor
 passlib[bcrypt]
 PyJWT
 numpy
+python-multipart
+PyPDF2
+pymupdf
+docx2txt
