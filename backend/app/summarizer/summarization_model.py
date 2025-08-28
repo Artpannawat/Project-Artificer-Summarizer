@@ -8,9 +8,16 @@ import re
 from collections import Counter
 import math
 
+# Try to import AI summarizer
+try:
+    from .ai_summarizer import AISummarizer
+    HAS_AI_SUMMARIZER = True
+except ImportError:
+    HAS_AI_SUMMARIZER = False
+
 class SummarizationModel:
     def __init__(self):
-        """Initialize the summarization model with Thai stopwords"""
+        """Initialize the summarization model with AI capabilities"""
         try:
             self.thai_stopwords = set(thai_stopwords())
         except:
@@ -22,6 +29,15 @@ class SummarizationModel:
                 'จาก', 'ไปยัง', 'เพื่อ', 'สำหรับ', 'กับ', 'โดย', 'แล้ว', 'แต่ง', 'ก็',
                 'ขึ้น', 'ลง', 'เข้า', 'ออก', 'มาก', 'น้อย', 'ดี', 'เก่า', 'ใหม่'
             }
+        
+        # Initialize AI summarizer if available
+        self.ai_summarizer = None
+        if HAS_AI_SUMMARIZER:
+            try:
+                self.ai_summarizer = AISummarizer()
+            except Exception as e:
+                print(f"Failed to initialize AI summarizer: {e}")
+                self.ai_summarizer = None
     
     def _contains_thai(self, text: str) -> bool:
         return re.search(r"[\u0E00-\u0E7F]", text) is not None
@@ -159,12 +175,27 @@ class SummarizationModel:
             # Fallback: return original if similarity calculation fails
             return sentences, scores
 
-    def summarize(self, text: str, num_sentences: int = 5) -> str:
-        """Enhanced summarization using multiple techniques"""
+    def summarize(self, text: str, num_sentences: int = 5, use_ai: bool = True) -> str:
+        """Enhanced summarization using AI when available, fallback to traditional"""
         if not text or len(text.strip()) < 50:
             return text.strip()
 
         num_sentences = max(1, min(int(num_sentences or 5), 10))  # Limit to max 10 sentences
+        
+        # Try AI summarization first if available and enabled
+        if use_ai and self.ai_summarizer and self.ai_summarizer.is_available():
+            try:
+                ai_result = self.ai_summarizer.summarize(text, num_sentences)
+                if ai_result and len(ai_result.strip()) > 20:
+                    return ai_result.strip()
+            except Exception as e:
+                print(f"AI summarization failed, falling back to traditional: {e}")
+        
+        # Fallback to traditional method
+        return self._traditional_summarize(text, num_sentences)
+    
+    def _traditional_summarize(self, text: str, num_sentences: int = 5) -> str:
+        """Traditional summarization method"""
         is_thai = self._contains_thai(text)
 
         try:
@@ -260,4 +291,7 @@ class SummarizationModel:
                 
             except:
                 # Ultimate fallback: return first few sentences
-                return " ".join(sentences[:num_sentences])
+                if 'sentences' in locals():
+                    return " ".join(sentences[:num_sentences])
+                else:
+                    return text[:500]  # Return first 500 chars as last resort
