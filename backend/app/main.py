@@ -86,7 +86,16 @@ app.add_middleware(
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+# Mount static files (Safely)
+import os
+static_dir = Path("backend/static")
+if not static_dir.exists():
+    # If static dir missing (common in Vercel if empty), use /tmp
+    static_dir = Path("/tmp/static")
+    static_dir.mkdir(parents=True, exist_ok=True)
+    print(f"DEBUG: 'backend/static' not found. Mounting {static_dir} instead.")
+
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # Include Routers
 app.include_router(user_router, prefix="/users", tags=["users"])
