@@ -10,8 +10,16 @@ from bson import ObjectId
 router = APIRouter()
 
 # Ensure avatar directory exists
+# Ensure avatar directory exists
 AVATAR_DIR = Path("backend/static/avatars")
-AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    # Fallback for Read-Only Filesystems (e.g. Vercel)
+    # Note: Files in /tmp are ephemeral and will not persist across restarts.
+    # For production, use AWS S3 or Cloudinary.
+    AVATAR_DIR = Path("/tmp/avatars")
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.post("/upload-avatar", dependencies=[Depends(JWTBearer())])
 async def upload_avatar(file: UploadFile = File(...), token: str = Depends(JWTBearer())):
