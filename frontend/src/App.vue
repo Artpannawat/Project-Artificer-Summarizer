@@ -126,6 +126,10 @@
           <Register v-if="currentView === 'Register'" @authenticated="onAuthenticated" @switch-to-login="currentView = 'Login'" />
         </div>
       </div>
+      
+      <footer style="text-align: center; padding: 1rem; opacity: 0.6; font-size: 0.8rem;">
+        System v1.6 (UI Validated)
+      </footer>
     </main>
   </div>
 </template>
