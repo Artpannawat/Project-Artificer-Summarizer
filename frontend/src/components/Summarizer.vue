@@ -266,7 +266,7 @@ export default {
       aiSummary: '',
       loading: false,
       error: '',
-      backendUrl: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
+      backendUrl: import.meta.env.VITE_API_URL || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://127.0.0.1:8000' : ''),
       inputType: 'text', // 'text' or 'file'
       selectedFile: null,
       fileProcessing: false,

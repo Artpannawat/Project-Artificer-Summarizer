@@ -137,7 +137,7 @@ import Login from './components/Login.vue';
 import Register from './components/Register.vue';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:8000' : '');
 
 export default {
   name: 'App',
@@ -508,6 +508,10 @@ export default {
 
   .navbar-center {
     display: none !important;
+  }
+  
+  .modern-navbar {
+      border-bottom: none !important;
   }
 }
 </style>
