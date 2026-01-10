@@ -68,7 +68,7 @@
         email: '',
         password: '',
         message: '',
-        backendUrl: 'http://127.0.0.1:8000',
+        backendUrl: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
       };
     },
     methods: {
