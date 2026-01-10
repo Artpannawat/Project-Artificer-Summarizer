@@ -2,6 +2,8 @@ import traceback
 import sys
 import os
 
+# FORCE_UPDATE_V1_5 = True
+
 # Add the project root to sys.path to ensure 'backend' module is found
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
