@@ -9,6 +9,8 @@ passlib[bcrypt]
 bcrypt==3.2.2
 PyJWT
 python-multipart
-PyPDF2
-docx2txt
 google-genai
+dnspython
+certifi
+requests
+google-auth

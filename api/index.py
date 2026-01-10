@@ -1,6 +1,4 @@
 try:
-    # DEBUG: FORCE CRASH TO TEST FALLBACK & ROUTING
-    raise Exception("FORCED DEBUG CRASH: Testing Fallback App & Routing Paths")
     from backend.app.main import app
 except Exception as e:
     import traceback
