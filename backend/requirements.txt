@@ -1,8 +1,5 @@
 fastapi
 uvicorn[standard]
-pythainlp
-python-crfsuite
-scikit-learn
 pydantic>=2
 python-docx
 email-validator
@@ -11,12 +8,7 @@ motor
 passlib[bcrypt]
 bcrypt==3.2.2
 PyJWT
-numpy
 python-multipart
-PyPDF2
-pymupdf
-docx2txt
-networkx
 google-genai
 dnspython
 certifi
