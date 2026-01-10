@@ -13,11 +13,18 @@ ALGORITHM = "HS256"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+import hashlib
+
 def get_hashed_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # Pre-hash with SHA256 to bypass bcrypt's 72-byte limit
+    # This ensures any length password is safe
+    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return pwd_context.hash(password_hash)
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(password, hashed_password)
+    # Pre-hash input before verifying
+    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return pwd_context.verify(password_hash, hashed_password)
 
 def sign_jwt(user_id: str) -> Dict[str, str]:
     payload = {
