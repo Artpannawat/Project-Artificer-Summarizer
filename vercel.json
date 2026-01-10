@@ -3,6 +3,14 @@
         {
             "source": "/api/(.*)",
             "destination": "/backend/app/main.py"
+        },
+        {
+            "source": "/docs",
+            "destination": "/backend/app/main.py"
+        },
+        {
+            "source": "/openapi.json",
+            "destination": "/backend/app/main.py"
         }
     ]
 }
