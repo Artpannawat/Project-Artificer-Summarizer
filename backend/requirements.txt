@@ -6,7 +6,7 @@ email-validator
 python-decouple
 motor
 passlib[bcrypt]
-bcrypt==3.2.2
+
 PyJWT
 python-multipart
 google-genai

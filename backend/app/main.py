@@ -216,15 +216,25 @@ async def health_check():
 
 @app.post("/register", response_model=TokenSchema, tags=["auth"])
 async def register_user(user: UserSchema = Body(...)):
-    user_exists = await user_collection.find_one({"email": user.email})
-    if user_exists:
-        raise HTTPException(status_code=400, detail="Email already registered.")
-    
-    hashed_password = get_hashed_password(user.password)
-    user.password = hashed_password
-    new_user = await user_collection.insert_one(user.dict())
-    
-    return sign_jwt(str(new_user.inserted_id))
+    try:
+        user_exists = await user_collection.find_one({"email": user.email})
+        if user_exists:
+            raise HTTPException(status_code=400, detail="Email already registered.")
+        
+        hashed_password = get_hashed_password(user.password)
+        user.password = hashed_password
+        new_user = await user_collection.insert_one(user.dict())
+        
+        # Ensure we return a string ID
+        return sign_jwt(str(new_user.inserted_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_msg = f"Registration Failed: {str(e)}"
+        print(f"CRITICAL REGISTER ERROR: {error_msg}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.options("/login", tags=["auth"])
 async def login_options():
