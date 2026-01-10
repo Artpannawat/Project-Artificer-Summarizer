@@ -24,6 +24,10 @@ startup_error = None
 async def health_check():
     global real_app, startup_error
     
+    db_status = "unknown"
+    db_latency = None
+    db_error = None
+
     # Try to load if not loaded
     if real_app is None and startup_error is None:
         try:
@@ -44,12 +48,27 @@ async def health_check():
             "traceback": startup_error.splitlines()
         }
     
-    # If loaded, verify DB connection via the real app's health check logic if possible, 
-    # or just return OK for now.
+    # Verify DB Connection
+    try:
+        from backend.app.database.mongo import client
+        import time
+        start = time.time()
+        await client.admin.command('ping')
+        db_latency = round((time.time() - start) * 1000, 2)
+        db_status = "connected"
+    except Exception as e:
+        db_status = "disconnected"
+        db_error = str(e)
+    
     return {
         "status": "ok",
         "message": message,
-        "mode": "lazy_loaded"
+        "mode": "lazy_loaded",
+        "database": {
+            "status": db_status,
+            "latency_ms": db_latency,
+            "error": db_error
+        }
     }
 
 @app.api_route("/{path_name:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
