@@ -228,6 +228,10 @@ async def user_login(user: UserLoginSchema = Body(...)):
     
     raise HTTPException(status_code=401, detail="Invalid email or password.")
 
+@app.options("/auth/google", tags=["auth"])
+async def google_login_options():
+    return {}
+
 @app.post("/auth/google", tags=["auth"])
 async def google_login(token_data: dict = Body(...)):
     try:
