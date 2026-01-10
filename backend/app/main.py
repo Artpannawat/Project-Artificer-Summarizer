@@ -222,7 +222,15 @@ async def register_user(user: UserSchema = Body(...)):
         if user_exists:
             raise HTTPException(status_code=400, detail="Email already registered.")
         
-        hashed_password = get_hashed_password_v2(user.password)
+        # INLINE FIX: Pre-hash with SHA256 to absolutely guarantee < 72 bytes
+        import hashlib
+        from backend.app.auth.auth_handler import pwd_context
+        
+        print(f"DEBUG: Original Password Length: {len(user.password)}")
+        pre_hash = hashlib.sha256(user.password.encode('utf-8')).hexdigest()
+        print(f"DEBUG: Pre-hashed Length: {len(pre_hash)}")
+        
+        hashed_password = pwd_context.hash(pre_hash)
         user.password = hashed_password
         new_user = await user_collection.insert_one(user.model_dump())
         
