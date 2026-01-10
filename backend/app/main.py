@@ -223,7 +223,7 @@ async def register_user(user: UserSchema = Body(...)):
         
         hashed_password = get_hashed_password(user.password)
         user.password = hashed_password
-        new_user = await user_collection.insert_one(user.dict())
+        new_user = await user_collection.insert_one(user.model_dump())
         
         # Ensure we return a string ID
         return sign_jwt(str(new_user.inserted_id))

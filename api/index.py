@@ -1,8 +1,15 @@
+import traceback
+import sys
+import os
+
+# Add the project root to sys.path to ensure 'backend' module is found
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import traceback
-import sys
 
 # Create the Vercel entry point app IMMEDIATELY
 app = FastAPI()
