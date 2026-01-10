@@ -128,7 +128,7 @@
       </div>
       
       <footer style="text-align: center; padding: 1rem; opacity: 0.6; font-size: 0.8rem;">
-        System v1.6 (UI Validated)
+        System v1.7 (Route Busting)
       </footer>
     </main>
   </div>
