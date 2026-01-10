@@ -153,15 +153,18 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 @app.get("/health")
 async def health_check():
-    # ... (Same health check)
-    db_ok = True
+    db_status = "ok"
+    db_error = None
     try:
         await client.admin.command('ping')
-    except Exception:
-        db_ok = False
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e)
+    
     return {
         "status": "ok", 
-        "db": db_ok,
+        "db": db_status,
+        "db_error": db_error,
         "ai_engine": "active" if gemini_model else "inactive",
     }
 
