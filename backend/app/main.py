@@ -17,6 +17,17 @@ import warnings
 # Suppress FutureWarning from google.generativeai
 warnings.filterwarnings("ignore", category=FutureWarning)
 import google.generativeai as genai
+STARTUP_ERRORS = []
+
+HAS_GENAI = False
+try:
+    import google.generativeai as genai
+    HAS_GENAI = True
+except ImportError as e:
+    STARTUP_ERRORS.append(f"ImportError: google.generativeai: {e}")
+except Exception as e:
+    STARTUP_ERRORS.append(f"Error importing google.generativeai: {e}")
+
 from pathlib import Path
 from datetime import datetime
 
@@ -34,14 +45,17 @@ if env_path.exists():
 
 GOOGLE_API_KEY = config("GOOGLE_API_KEY", default=None)
 # ... (Gemini init logic remains same)
-if GOOGLE_API_KEY:
+if GOOGLE_API_KEY and HAS_GENAI:
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
         gemini_model = "active" 
     except Exception as e:
         gemini_model = None
+        STARTUP_ERRORS.append(f"GenAI Configure Error: {e}")
 else:
     gemini_model = None
+    if not HAS_GENAI:
+        STARTUP_ERRORS.append("GenAI module missing")
 
 import textwrap
 
@@ -50,7 +64,13 @@ try:
     from .summarizer.file_processor import FileProcessor
     file_processor = FileProcessor()
     FILE_PROCESSOR_MODE = "full"
-except ImportError:
+except ImportError as e:
+    STARTUP_ERRORS.append(f"FileProcessor Import Error: {e}")
+    from .summarizer.simple_file_processor import SimpleFileProcessor
+    file_processor = SimpleFileProcessor()
+    FILE_PROCESSOR_MODE = "simple"
+except Exception as e:
+    STARTUP_ERRORS.append(f"FileProcessor Unexpected Error: {e}")
     from .summarizer.simple_file_processor import SimpleFileProcessor
     file_processor = SimpleFileProcessor()
     FILE_PROCESSOR_MODE = "simple"
@@ -79,6 +99,7 @@ async def startup_db_client():
         print("DEBUG: Database index created/verified")
     except Exception as e:
         print(f"DEBUG: Startup Database Error: {e}")
+        STARTUP_ERRORS.append(f"DB Startup Error: {e}")
 
     print("DEBUG: Routes registered:")
     for route in app.routes:
@@ -92,8 +113,8 @@ class TextRequest(BaseModel):
     num_sentences: int | None = 5
 
 def summarize_with_ai(text: str, num_sentences: int) -> str:
-    if not gemini_model:
-        return "AI system is offline (API Key missing or SDK Init failed)."
+    if not gemini_model or not HAS_GENAI:
+        return f"AI system is offline. Startup Errors: {STARTUP_ERRORS}"
     
     # Strategies: Multi-Model Fallback Priority (Updated based on Diagnostic)
     strategies = [
@@ -177,6 +198,7 @@ async def health_check():
         "status": "ok", 
         "db": db_status,
         "db_error": db_error,
+        "startup_errors": STARTUP_ERRORS,
         "mongo_config_source": masked_uri,
         "ai_engine": "active" if gemini_model else "inactive",
     }
