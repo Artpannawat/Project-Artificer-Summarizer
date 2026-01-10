@@ -217,6 +217,14 @@ async def register_user(user: UserSchema = Body(...)):
     
     return sign_jwt(str(new_user.inserted_id))
 
+@app.options("/login", tags=["auth"])
+async def login_options():
+    return {}
+
+@app.options("/register", tags=["auth"])
+async def register_options():
+    return {}
+
 @app.post("/login", response_model=TokenSchema, tags=["auth"])
 async def user_login(user: UserLoginSchema = Body(...)):
     user_data = await user_collection.find_one({"email": user.email})
