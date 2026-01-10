@@ -15,7 +15,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import hashlib
 
-def get_hashed_password(password: str) -> str:
+def get_hashed_password_v2(password: str) -> str:
     # Pre-hash with SHA256 to bypass bcrypt's 72-byte limit
     # This ensures any length password is safe
     print(f"DEBUG: Hashing password. Original length: {len(password)}")

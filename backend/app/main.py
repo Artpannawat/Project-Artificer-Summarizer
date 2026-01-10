@@ -8,7 +8,7 @@ from .summarizer.text_processor import TextProcessor
 from .summarizer.summarization_model import SummarizationModel
 from .models.user import UserSchema, UserLoginSchema, TokenSchema
 from .database.mongo import user_collection, create_unique_index, client, history_collection
-from .auth.auth_handler import get_hashed_password, verify_password, sign_jwt, decode_jwt, verify_google_token
+from .auth.auth_handler import get_hashed_password_v2, verify_password, sign_jwt, decode_jwt, verify_google_token
 from .routers.users import router as user_router
 from .routers.history import router as history_router
 from decouple import config
@@ -216,12 +216,13 @@ async def health_check():
 
 @app.post("/register", response_model=TokenSchema, tags=["auth"])
 async def register_user(user: UserSchema = Body(...)):
+    print(f"DEBUG: Registering user {user.email} with password length {len(user.password)}")
     try:
         user_exists = await user_collection.find_one({"email": user.email})
         if user_exists:
             raise HTTPException(status_code=400, detail="Email already registered.")
         
-        hashed_password = get_hashed_password(user.password)
+        hashed_password = get_hashed_password_v2(user.password)
         user.password = hashed_password
         new_user = await user_collection.insert_one(user.model_dump())
         
