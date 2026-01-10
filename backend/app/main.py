@@ -74,7 +74,12 @@ app.include_router(history_router, prefix="/api", tags=["history"])
 
 @app.on_event("startup")
 async def startup_db_client():
-    await create_unique_index()
+    try:
+        await create_unique_index()
+        print("DEBUG: Database index created/verified")
+    except Exception as e:
+        print(f"DEBUG: Startup Database Error: {e}")
+
     print("DEBUG: Routes registered:")
     for route in app.routes:
         print(f" - {route.path} ({route.name})")
@@ -161,10 +166,18 @@ async def health_check():
         db_status = "error"
         db_error = str(e)
     
+    # Check what Mongo URI is actually being used (Masked for security)
+    from decouple import config
+    mongo_uri = config("MONGO_DETAILS", default="NOT_SET")
+    masked_uri = "NOT_SET"
+    if mongo_uri != "NOT_SET":
+         masked_uri = mongo_uri.split("@")[-1] if "@" in mongo_uri else "LOCALHOST_OR_INVALID"
+    
     return {
         "status": "ok", 
         "db": db_status,
         "db_error": db_error,
+        "mongo_config_source": masked_uri,
         "ai_engine": "active" if gemini_model else "inactive",
     }
 
