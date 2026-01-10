@@ -466,6 +466,7 @@ export default {
   to { transform: rotate(360deg); }
 }
 
+
 .app-logo-img {
   width: 48px;
   height: auto;
@@ -473,4 +474,25 @@ export default {
   display: block;
 }
 
+@media (max-width: 640px) {
+  .app-title {
+    font-size: 1.25rem;
+  }
+  
+  .app-subtitle {
+    display: none;
+  }
+
+  .logo-text {
+    display: none;
+  }
+
+  .navbar-content {
+    padding: 0 1rem;
+  }
+  
+  .right-section {
+    gap: 0.5rem;
+  }
+}
 </style>
