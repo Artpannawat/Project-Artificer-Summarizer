@@ -42,7 +42,7 @@
     methods: {
       async register() {
         try {
-          const response = await axios.post(`${this.backendUrl}/register`, {
+          const response = await axios.post(`${this.backendUrl}/register_v2`, {
             username: this.username,
             email: this.email,
             password: this.password,

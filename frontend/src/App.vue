@@ -128,7 +128,7 @@
       </div>
       
       <footer style="text-align: center; padding: 1rem; opacity: 0.6; font-size: 0.8rem;">
-        System v1.8 (Route Busting - FINAL)
+        System v1.9 (Route Busting - CONFIRMED)
       </footer>
     </main>
   </div>
