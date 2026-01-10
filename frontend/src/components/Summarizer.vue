@@ -157,9 +157,9 @@
       
       <button 
         @click="summarize" 
-        :disabled="loading || (inputType === 'text' && !inputText.trim()) || (inputType === 'file' && !selectedFile)" 
+        :disabled="loading || cooldown || (inputType === 'text' && !inputText.trim()) || (inputType === 'file' && !selectedFile)" 
         class="summarize-button"
-        :class="{ 'loading': loading }"
+        :class="{ 'loading': loading || cooldown }"
       >
         <svg v-if="loading" class="loading-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M21 12a9 9 0 11-6.219-8.56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -168,7 +168,7 @@
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
           <polyline points="10,15 15,10 21,4" stroke="currentColor" stroke-width="2"/>
         </svg>
-        {{ loading ? 'กำลังประมวลผล...' : (inputType === 'file' ? 'สรุปไฟล์' : 'สรุปเนื้อหา') }}
+        {{ loading ? 'กำลังประมวลผล...' : (cooldown ? 'รอสักครู่...' : (inputType === 'file' ? 'สรุปไฟล์' : 'สรุปเนื้อหา')) }}
       </button>
     </div>
     
@@ -183,32 +183,70 @@
       <span>{{ error }}</span>
     </div>
     
-    <div v-if="summary" class="summary-section">
-      <div class="summary-header">
-        <div class="summary-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="20,6 9,17 4,12" stroke="currentColor" stroke-width="2"/>
-          </svg>
+    <!-- Results Section -->
+    <div v-if="basicSummary || aiSummary" class="results-container">
+      
+      <!-- Basic Engine Result -->
+      <div v-if="basicSummary" class="summary-section basic-engine">
+        <div class="summary-header">
+          <div class="header-left">
+            <div class="summary-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+                <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+                <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+                <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+                <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <h3>Basic Engine (Traditional)</h3>
+          </div>
+          <button @click="copyToClipboard(basicSummary)" class="copy-button-icon" title="คัดลอก">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
         </div>
-        <h3>ผลลัพธ์การสรุป</h3>
+        <div class="summary-content">
+          <p>{{ basicSummary }}</p>
+        </div>
       </div>
-      <div class="summary-content">
-        <p>{{ summary }}</p>
+
+      <!-- AI Engine Result -->
+      <div v-if="aiSummary" class="summary-section ai-engine">
+        <div class="summary-header">
+          <div class="header-left">
+            <div class="summary-icon ai-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="ai-header-text">
+              <h3>Artificer AI Engine</h3>
+              <span class="powered-by">Powered by Gemini</span>
+            </div>
+            <span class="premium-badge">Recommended</span>
+          </div>
+          <button @click="copyToClipboard(aiSummary)" class="copy-button-icon" title="คัดลอก">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="summary-content">
+          <p>{{ aiSummary }}</p>
+        </div>
       </div>
-      <div class="summary-actions">
-        <button @click="copyToClipboard" class="copy-button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
-          </svg>
-          คัดลอก
-        </button>
+
+      <div class="actions-row">
         <button @click="clearResults" class="clear-button">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <polyline points="3,6 5,6 21,6" stroke="currentColor" stroke-width="2"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2"/>
           </svg>
-          ล้างผลลัพธ์
+          ล้างผลลัพธ์ทั้งหมด
         </button>
       </div>
     </div>
@@ -224,7 +262,8 @@ export default {
     return {
       inputText: '',
       numSentences: 3,
-      summary: '',
+      basicSummary: '',
+      aiSummary: '',
       loading: false,
       error: '',
       backendUrl: 'http://127.0.0.1:8000',
@@ -232,7 +271,8 @@ export default {
       selectedFile: null,
       fileProcessing: false,
       isDragOver: false,
-      serverInfo: null
+      serverInfo: null,
+      cooldown: false // Spam Protection
     }
   },
   
@@ -257,7 +297,8 @@ export default {
     
     async summarize() {
       this.error = ''
-      this.summary = ''
+      this.basicSummary = ''
+      this.aiSummary = ''
       
       // Check input based on type
       if (this.inputType === 'text') {
@@ -275,31 +316,62 @@ export default {
       this.loading = true
       try {
         let response
+        const token = localStorage.getItem('token')
+        const headers = {}
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+        }
         
         if (this.inputType === 'text') {
           // Text summarization
           response = await axios.post(`${this.backendUrl}/summarize`, {
             text: this.inputText,
             num_sentences: this.numSentences
-          })
+          }, { headers })
         } else {
           // File summarization
           const formData = new FormData()
           formData.append('file', this.selectedFile)
           formData.append('num_sentences', this.numSentences.toString())
           
+          // Merge content-type with auth headers
           response = await axios.post(`${this.backendUrl}/summarize-file`, formData, {
             headers: {
+              ...headers,
               'Content-Type': 'multipart/form-data'
             }
           })
         }
         
-        this.summary = response.data.summary
+        // Handle new response format
+        if (response.data.comparison_mode) {
+          this.basicSummary = response.data.basic_summary
+          this.aiSummary = response.data.ai_summary
+        } else {
+          // Fallback just in case
+          this.basicSummary = response.data.summary
+          this.aiSummary = ""
+        }
       } catch (e) {
-        this.error = e.response?.data?.detail || e.message
+        // Handle Quota Exceeded (429) specifically
+        if (e.response && e.response.status === 500 && e.response.data && e.response.data.detail && e.response.data.detail.includes('429 RESOURCE_EXHAUSTED')) {
+             this.aiSummary = "⚠️ ขออภัย AI Service ใช้งานเกินขีดจำกัด (Quota Exceeded) กรุณาลองใหม่ในอีกสักครู่ หรือใช้ Basic Engine ไปก่อน"
+             // Keep basic summary if available
+             if (!this.basicSummary) {
+                 this.error = "AI Service is busy (Quota Exceeded). Please try again later."
+             }
+        } else if (e.response?.status === 429) {
+             this.error = "System is busy. Please try again later."
+        } else {
+             this.error = e.response?.data?.detail || e.message
+        }
       } finally {
         this.loading = false
+        // Spam Protection: 3s Cooldown
+        this.cooldown = true
+        setTimeout(() => {
+            this.cooldown = false
+        }, 3000)
       }
     },
     
@@ -380,17 +452,18 @@ export default {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     },
     
-    async copyToClipboard() {
+    async copyToClipboard(text) {
       try {
-        await navigator.clipboard.writeText(this.summary)
-        // Could add a toast notification here
+        await navigator.clipboard.writeText(text)
+        alert('คัดลอกเรียบร้อยแล้ว')
       } catch (err) {
         console.error('Failed to copy text: ', err)
       }
     },
     
     clearResults() {
-      this.summary = ''
+      this.basicSummary = ''
+      this.aiSummary = ''
       this.error = ''
       this.inputText = ''
       this.selectedFile = null
@@ -398,557 +471,33 @@ export default {
       if (this.$refs.fileInput) {
         this.$refs.fileInput.value = ''
       }
+    },
+    
+    loadFromHistory(historyItem) {
+      if (!historyItem) return
+      
+      // Reset first
+      this.clearResults()
+      
+      // Restore input (We switch to text mode to show the content even if it was a file)
+      this.inputType = 'text'
+      this.inputText = historyItem.original_text || ''
+
+      // Restore results from the nested summary_result object
+      // Note: Backend saves the result object as 'summary_result' in top level history item,
+      // but inside that object it matches the API response structure.
+      const result = historyItem.summary_result || {}
+      
+      this.basicSummary = result.basic_summary || ''
+      this.aiSummary = result.ai_summary || ''
+      
+      // If it was a file, we might want to indicate that, but for now showing text is fine.
+      if (result.filename) {
+        console.log("Loaded history from file:", result.filename)
+      }
     }
   }
 }
 </script>
 
-<style scoped>
-/* Modern Summarizer Card Styles */
-.summarizer-card {
-  background: white;
-  border-radius: 24px;
-  padding: 2rem;
-  box-shadow: 0 10px 25px rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.1);
-  max-width: 800px;
-  margin: 0 auto;
-  position: relative;
-  overflow: hidden;
-}
-
-.summarizer-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #8B5CF6, #A855F7);
-}
-
-/* Card Header */
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #E5E7EB;
-}
-
-.header-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #8B5CF6, #A855F7);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.header-content h2 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1F2937;
-}
-
-.header-content p {
-  margin: 0;
-  color: #6B7280;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-/* Input Section */
-.input-section {
-  margin-bottom: 2rem;
-}
-
-/* Input Type Selector */
-.input-type-selector {
-  display: flex;
-  background: #F3F4F6;
-  border-radius: 12px;
-  padding: 0.25rem;
-  margin-bottom: 1.5rem;
-  gap: 0.25rem;
-}
-
-.type-button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: transparent;
-  color: #6B7280;
-}
-
-.type-button.active {
-  background: white;
-  color: #8B5CF6;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.type-button:hover:not(.active) {
-  color: #374151;
-}
-
-/* Text Input Container */
-.text-input-container {
-  animation: fadeIn 0.3s ease;
-}
-
-.input-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.label-text {
-  font-weight: 600;
-  color: #1F2937;
-  font-size: 0.875rem;
-}
-
-.label-hint {
-  font-size: 0.75rem;
-  color: #9CA3AF;
-}
-
-.text-input {
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid #E5E7EB;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  transition: all 0.3s ease;
-  background: rgba(139, 92, 246, 0.02);
-  resize: vertical;
-  min-height: 150px;
-}
-
-.text-input:focus {
-  outline: none;
-  border-color: #8B5CF6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-  background: rgba(139, 92, 246, 0.05);
-}
-
-.text-input::placeholder {
-  color: #9CA3AF;
-}
-
-/* File Input Container */
-.file-input-container {
-  animation: fadeIn 0.3s ease;
-}
-
-.file-upload-area {
-  border: 2px dashed #E5E7EB;
-  border-radius: 16px;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: rgba(139, 92, 246, 0.02);
-  position: relative;
-}
-
-.file-upload-area:hover {
-  border-color: #8B5CF6;
-  background: rgba(139, 92, 246, 0.05);
-}
-
-.file-upload-area.drag-over {
-  border-color: #8B5CF6;
-  background: rgba(139, 92, 246, 0.1);
-  transform: scale(1.02);
-}
-
-.file-upload-area.has-file {
-  border-style: solid;
-  border-color: #8B5CF6;
-  background: rgba(139, 92, 246, 0.05);
-}
-
-.file-input-hidden {
-  display: none;
-}
-
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.upload-icon {
-  color: #8B5CF6;
-  opacity: 0.7;
-}
-
-.upload-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.upload-primary {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-}
-
-.upload-secondary {
-  font-size: 0.875rem;
-  color: #6B7280;
-  margin: 0;
-}
-
-.file-preview {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #E5E7EB;
-}
-
-.file-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.file-icon {
-  color: #8B5CF6;
-}
-
-.file-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.file-name {
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.file-size {
-  font-size: 0.75rem;
-  color: #6B7280;
-  margin: 0;
-}
-
-.remove-file-button {
-  background: rgba(239, 68, 68, 0.1);
-  color: #DC2626;
-  border: none;
-  border-radius: 8px;
-  padding: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.remove-file-button:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: scale(1.1);
-}
-
-.file-processing {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: rgba(139, 92, 246, 0.1);
-  border-radius: 12px;
-  margin-top: 1rem;
-  color: #8B5CF6;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.processing-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Controls Section */
-.controls-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.control-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #1F2937;
-}
-
-.number-input-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: white;
-  border: 2px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  transition: all 0.3s ease;
-}
-
-.number-input-wrapper:focus-within {
-  border-color: #8B5CF6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.number-input {
-  border: none;
-  outline: none;
-  width: 60px;
-  text-align: center;
-  font-weight: 600;
-  color: #1F2937;
-}
-
-.input-unit {
-  font-size: 0.75rem;
-  color: #6B7280;
-  font-weight: 500;
-}
-
-.summarize-button {
-  background: linear-gradient(135deg, #8B5CF6, #A855F7);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(139, 92, 246, 0.25);
-  white-space: nowrap;
-}
-
-.summarize-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 15px rgba(139, 92, 246, 0.35);
-}
-
-.summarize-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.loading-spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Error Message */
-.error-message {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 12px;
-  color: #DC2626;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-}
-
-.error-icon {
-  flex-shrink: 0;
-}
-
-/* Summary Section */
-.summary-section {
-  background: linear-gradient(135deg, #F3E8FF, rgba(168, 85, 247, 0.1));
-  border-radius: 16px;
-  padding: 1.5rem;
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  animation: slideInUp 0.5s ease-out;
-}
-
-.summary-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.summary-icon {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, #8B5CF6, #A855F7);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.summary-header h3 {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1F2937;
-}
-
-.summary-content {
-  background: white;
-  padding: 1.25rem;
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.1);
-}
-
-.summary-content p {
-  margin: 0;
-  line-height: 1.7;
-  color: #374151;
-}
-
-.summary-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.copy-button, .clear-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.copy-button {
-  background: rgba(139, 92, 246, 0.1);
-  color: #8B5CF6;
-}
-
-.copy-button:hover {
-  background: rgba(139, 92, 246, 0.2);
-  transform: translateY(-1px);
-}
-
-.clear-button {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6B7280;
-}
-
-.clear-button:hover {
-  background: rgba(107, 114, 128, 0.2);
-  transform: translateY(-1px);
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .summarizer-card {
-    padding: 1.5rem;
-    margin: 0 1rem;
-  }
-  
-  .controls-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .summarize-button {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .summary-actions {
-    flex-direction: column;
-  }
-  
-  .copy-button, .clear-button {
-    justify-content: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .card-header {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .header-content h2 {
-    font-size: 1.25rem;
-  }
-}
-</style>
-
+<style scoped src="./Summarizer.css"></style>

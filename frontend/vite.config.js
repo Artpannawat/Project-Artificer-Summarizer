@@ -7,7 +7,10 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: false,
-    open: false
+    open: false,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups'
+    }
   },
   preview: {
     host: '127.0.0.1',

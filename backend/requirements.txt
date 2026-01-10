@@ -9,9 +9,12 @@ email-validator
 python-decouple
 motor
 passlib[bcrypt]
+bcrypt==3.2.2
 PyJWT
 numpy
 python-multipart
 PyPDF2
 pymupdf
 docx2txt
+networkx
+google-genai

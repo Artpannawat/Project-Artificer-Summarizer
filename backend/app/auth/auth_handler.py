@@ -3,8 +3,12 @@ import jwt
 from typing import Dict
 from passlib.context import CryptContext
 from decouple import config
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 JWT_SECRET = config("JWT_SECRET", default="your-super-secret-key")
+# Attempt to get Client ID from env if available, else None (audience check skipped if None)
+GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default=None)
 ALGORITHM = "HS256"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -29,3 +33,35 @@ def decode_jwt(token: str) -> dict:
         return decoded_token if decoded_token["expires"] >= time.time() else None
     except:
         return {}
+
+import requests
+
+# ... (previous imports)
+
+def verify_google_token(token: str) -> dict | None:
+    try:
+        # 1. Try treating it as an ID Token (JWT)
+        print(f"DEBUG: Verifying as ID Token with Client ID: {GOOGLE_CLIENT_ID}")
+        id_info = id_token.verify_oauth2_token(token, google_requests.Request(), audience=GOOGLE_CLIENT_ID, clock_skew_in_seconds=10)
+        return id_info
+    except ValueError:
+        # 2. If it's not a valid ID Token, try treating it as an Access Token
+        print("DEBUG: ID Token verification failed/invalid. Trying as Access Token...")
+        try:
+            response = requests.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if response.status_code == 200:
+                user_info = response.json()
+                print("DEBUG: Access Token verification successful.")
+                return user_info
+            else:
+                print(f"DEBUG: Access Token verification failed: {response.text}")
+                return None
+        except Exception as e:
+            print(f"DEBUG: Error fetching UserInfo: {e}")
+            return None
+    except Exception as e:
+        print(f"DEBUG: Unexpected error in verify_google_token: {e}")
+        return None

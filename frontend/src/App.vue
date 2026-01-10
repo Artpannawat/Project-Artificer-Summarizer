@@ -17,6 +17,14 @@
             </svg>
           </div>
           <span class="logo-text">Artificer</span>
+          
+          <!-- History Toggle Button -->
+          <button v-if="isAuthenticated && !isGuest" @click="toggleSidebar" class="history-toggle-btn" title="ประวัติการใช้งาน">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 8v4l3 3"></path>
+                  <circle cx="12" cy="12" r="9"></circle>
+              </svg>
+          </button>
         </div>
         
         <div class="navbar-center">
@@ -24,80 +32,83 @@
           <p class="app-subtitle">AI-Powered Content Summarization</p>
         </div>
         
-        <div class="user-profile" @click="toggleDropdown" ref="userProfile">
-          <div class="user-avatar">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
-              <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </div>
-          <div class="user-info" v-if="isAuthenticated">
-            <span class="user-name">ผู้ใช้งาน</span>
-            <span class="user-status">ออนไลน์</span>
-          </div>
-          <div class="dropdown-arrow">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          
-          <!-- Modern Dropdown Menu -->
-          <div class="profile-dropdown" :class="{ 'show': showDropdown }">
-            <div v-if="isAuthenticated" class="dropdown-content">
-              <div class="dropdown-header">
-                <div class="user-avatar-large">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
-                    <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="2"/>
-                  </svg>
-                </div>
-                <div class="user-details">
-                  <span class="user-name-large">ผู้ใช้งาน</span>
-                  <span class="user-email">user@example.com</span>
-                </div>
-              </div>
-              <div class="dropdown-divider"></div>
-              <div class="dropdown-item" @click="viewProfile">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="1.5"/>
+        <div class="right-section">
+          <!-- Theme Toggle Switch -->
+          <div class="theme-toggle" @click="toggleTheme" title="Toggle Theme">
+            <div class="toggle-track" :class="{ 'dark': isDarkMode }">
+              <div class="toggle-thumb">
+                <svg v-if="!isDarkMode" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="5" stroke="#F59E0B" stroke-width="2" fill="#F59E0B"/>
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke="#F59E0B" stroke-width="2"/>
                 </svg>
-                โปรไฟล์
-              </div>
-              <div class="dropdown-item" @click="viewSettings">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.5"/>
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#A78BFA" stroke="#A78BFA" stroke-width="2"/>
                 </svg>
-                การตั้งค่า
-              </div>
-              <div class="dropdown-divider"></div>
-              <div class="dropdown-item logout-item" @click="logout">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.5"/>
-                  <polyline points="16,17 21,12 16,7" stroke="currentColor" stroke-width="1.5"/>
-                  <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                ออกจากระบบ
               </div>
             </div>
-            <div v-else class="dropdown-content">
-              <div class="dropdown-item" @click="switchToLogin">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" stroke-width="1.5"/>
-                  <polyline points="10,17 15,12 10,7" stroke="currentColor" stroke-width="1.5"/>
-                  <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                เข้าสู่ระบบ
+          </div>
+
+          <div class="user-profile" @click="toggleDropdown" ref="userProfile">
+            <div class="user-avatar">
+              <img v-if="currentUser.avatar_url" :src="getAvatarUrl(currentUser.avatar_url)" alt="User Avatar" class="avatar-img"/>
+              <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+                <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="user-info" v-if="isAuthenticated">
+              <span class="user-name">{{ currentUser.username || 'ผู้ใช้งาน' }}</span>
+            </div>
+            <div class="dropdown-arrow">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            
+            <!-- Modern Dropdown Menu -->
+            <div class="profile-dropdown" :class="{ 'show': showDropdown }">
+              <div v-if="isAuthenticated" class="dropdown-content">
+                <div class="dropdown-header">
+                  <div class="user-avatar-large-container" @click.stop="triggerFileInput">
+                    <div class="user-avatar-large">
+                      <img v-if="currentUser.avatar_url" :src="getAvatarUrl(currentUser.avatar_url)" alt="User Avatar" class="avatar-img"/>
+                      <svg v-else width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+                        <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="2"/>
+                      </svg>
+                    </div>
+                    <!-- Hover Effect Overlay -->
+                    <div class="avatar-overlay">
+                      <svg v-if="!isUploading" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                      </svg>
+                      <div v-else class="upload-spinner"></div>
+                    </div>
+                    <input type="file" ref="fileInput" hidden @change="handleAvatarUpload" accept="image/png, image/jpeg">
+                  </div>
+                  <div class="user-details">
+                    <span class="user-name-large">{{ currentUser.username || 'ผู้ใช้งาน' }}</span>
+                    <span class="user-email">{{ currentUser.email || 'user@example.com' }}</span>
+                  </div>
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item logout-item" @click="logout">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.5"/>
+                    <polyline points="16,17 21,12 16,7" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                  </svg>
+                  ออกจากระบบ
+                </div>
               </div>
-              <div class="dropdown-item" @click="switchToRegister">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.5"/>
-                  <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/>
-                  <line x1="20" y1="8" x2="20" y2="14" stroke="currentColor" stroke-width="1.5"/>
-                  <line x1="23" y1="11" x2="17" y2="11" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                ลงทะเบียน
+              <div v-else class="dropdown-content">
+                <div class="dropdown-item" @click="switchToLogin">
+                  เข้าสู่ระบบ
+                </div>
+                <div class="dropdown-item" @click="switchToRegister">
+                  ลงทะเบียน
+                </div>
               </div>
             </div>
           </div>
@@ -105,7 +116,9 @@
       </div>
     </nav>
     
-    <main class="main-content">
+    <HistorySidebar :is-open="isSidebarOpen" @close="isSidebarOpen = false" @select-history="handleHistorySelect" />
+
+    <main class="main-content" :class="{ 'sidebar-open': isSidebarOpen }">
       <div class="content-header">
         <h2 class="main-prompt">Ask our AI anything</h2>
         <p class="main-description">ใช้ประสิทธิภาพของ AI เพื่อสรุปเนื้อหาของคุณอย่างรวดเร็วและแม่นยำ</p>
@@ -113,7 +126,7 @@
       
       <div class="content-body">
         <div v-if="isAuthenticated" class="authenticated-content">
-          <Summarizer />
+          <Summarizer ref="summarizerComponent" />
         </div>
         <div v-else class="auth-content">
           <Login v-if="currentView === 'Login'" @authenticated="onAuthenticated" @switch-to-register="currentView = 'Register'" />
@@ -126,25 +139,44 @@
 
 <script>
 import Summarizer from './components/Summarizer.vue';
+import HistorySidebar from './components/HistorySidebar.vue';
 import Login from './components/Login.vue';
 import Register from './components/Register.vue';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000';
 
 export default {
   name: 'App',
   components: {
     Summarizer,
+    HistorySidebar,
     Login,
     Register
   },
   data() {
     return {
       isAuthenticated: false,
-      currentView: 'Login', // Start with the login view
-      showDropdown: false
+      currentView: 'Login',
+      showDropdown: false,
+      isSidebarOpen: false,
+      isDarkMode: false,
+      currentUser: {
+        username: '',
+        email: '',
+        avatar_url: null
+      },
+      isUploading: false
     };
+  },
+  computed: {
+    isGuest() {
+      return this.currentUser && (this.currentUser.username === 'Guest' || this.currentUser.email === '');
+    }
   },
   created() {
     this.checkAuth();
+    this.initTheme();
     // Close dropdown when clicking outside
     document.addEventListener('click', this.handleClickOutside);
   },
@@ -152,17 +184,63 @@ export default {
     document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
-    checkAuth() {
-      this.isAuthenticated = !!localStorage.getItem('token');
+    initTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        this.isDarkMode = true;
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        this.isDarkMode = false;
+        document.documentElement.removeAttribute('data-theme');
+      }
     },
-    onAuthenticated() {
-      this.isAuthenticated = true;
-      this.showDropdown = false;
+    toggleTheme() {
+      this.isDarkMode = !this.isDarkMode;
+      if (this.isDarkMode) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+      }
+    },
+    checkAuth() {
+      const token = localStorage.getItem('token');
+      if (token) {
+        this.isAuthenticated = true;
+        this.fetchUserProfile();
+      }
+    },
+    async fetchUserProfile() {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        this.currentUser = response.data;
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        if (error.response && error.response.status === 403) {
+           this.logout();
+        }
+      }
+    },
+    onAuthenticated(status = 'authenticated') {
+      if (status === 'guest') {
+        this.isAuthenticated = true; // Allow access
+        this.currentUser = { username: 'Guest', email: '', avatar_url: null };
+      } else {
+        this.isAuthenticated = true;
+        this.showDropdown = false;
+        this.fetchUserProfile();
+      }
     },
     logout() {
       localStorage.removeItem('token');
       this.isAuthenticated = false;
       this.showDropdown = false;
+      this.isSidebarOpen = false; // Close sidebar on logout
+      this.currentUser = { username: '', email: '', avatar_url: null };
     },
     toggleDropdown() {
       this.showDropdown = !this.showDropdown;
@@ -180,15 +258,66 @@ export default {
       this.currentView = 'Register';
       this.showDropdown = false;
     },
-    viewProfile() {
-      // Placeholder for profile functionality
-      console.log('View Profile clicked');
-      this.showDropdown = false;
+    getAvatarUrl(path) {
+      if (!path) return null;
+      if (path.startsWith('http')) return path;
+      return `${API_URL}${path}`;
     },
-    viewSettings() {
-      // Placeholder for settings functionality
-      console.log('View Settings clicked');
-      this.showDropdown = false;
+    triggerFileInput() {
+      this.$refs.fileInput.click();
+    },
+    async handleAvatarUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size too large (Max 5MB)');
+        return;
+      }
+
+      this.isUploading = true;
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.post(`${API_URL}/users/upload-avatar`, formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        // Update local state immediately
+        this.currentUser.avatar_url = response.data.avatar_url + `?t=${new Date().getTime()}`; // Cache buster
+      } catch (error) {
+        alert('Failed to upload avatar');
+        console.error(error);
+      } finally {
+        this.isUploading = false;
+      }
+    },
+    toggleSidebar() {
+      this.isSidebarOpen = !this.isSidebarOpen;
+    },
+    async handleHistorySelect(historyId) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/api/history/${historyId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Use refs to call method on child component
+        if (this.$refs.summarizerComponent) {
+            this.$refs.summarizerComponent.loadFromHistory(response.data);
+            // On mobile/tablet, close sidebar after selection
+            if (window.innerWidth < 1024) {
+                this.isSidebarOpen = false;
+            }
+        }
+      } catch (error) {
+        console.error("Failed to load history details:", error);
+      }
     }
   }
 }
@@ -197,118 +326,151 @@ export default {
 <style>
 @import './assets/styles.css';
 
-/* Modern Auth Card Styles */
-.auth-card {
-  background: var(--background-card);
-  padding: 2.5rem;
-  border-radius: 24px;
-  box-shadow: var(--shadow-large);
-  border: 1px solid var(--border-light);
-  width: 100%;
-  max-width: 450px;
-  text-align: center;
+.history-toggle-btn {
+    background: transparent;
+    border: none;
+    color: white; /* Contrast against navbar gradient? No, navbar is transparent/glass? Wait. */
+    /* Navbar text seems to be dark or light depending on theme? Logo text is "Artificer". */
+    /* Let's check navbar styling in original file. */
+    /* .logo-text is black/dark. */
+    /* I'll start with inheriting color. */
+    color: inherit;
+    cursor: pointer;
+    padding: 8px;
+    /* margin-left: 1rem; -- Removed to rely on .logo-section gap */
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.history-toggle-btn:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+:global([data-theme='dark']) .history-toggle-btn {
+    color: #fff;
+}
+:global([data-theme='dark']) .history-toggle-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Adjust main content when sidebar is open (Desktop) */
+@media (min-width: 1024px) {
+    .main-content {
+        transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .main-content.sidebar-open {
+        margin-left: 280px;
+    }
+}
+
+
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+  cursor: pointer;
+  padding: 4px;
+}
+
+.toggle-track {
+  width: 48px;
+  height: 24px;
+  background-color: #E2E8F0;
+  border-radius: 20px;
   position: relative;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.toggle-track.dark {
+  background-color: #4B5563;
+}
+
+.toggle-thumb {
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  left: 2px;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.toggle-track.dark .toggle-thumb {
+  transform: translateX(24px);
+  background-color: #1F2937;
+}
+
+/* Avatar Styling */
+.user-avatar-large-container {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-right: 1rem;
+  cursor: pointer;
+  border-radius: 50%;
   overflow: hidden;
 }
 
-.auth-card::before {
-  content: '';
+.user-avatar-large {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-main);
+  border-radius: 50%;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-overlay {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--primary-purple), var(--secondary-purple));
-}
-
-.auth-card h2 {
-  color: var(--text-primary);
-  margin: 0 0 2rem 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.auth-card input {
   width: 100%;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.25rem;
-  border: 2px solid var(--border-light);
-  border-radius: 12px;
-  box-sizing: border-box;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  background: rgba(139, 92, 246, 0.02);
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
 }
 
-.auth-card input:focus {
-  outline: none;
-  border-color: var(--primary-purple);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-  background: rgba(139, 92, 246, 0.05);
+.user-avatar-large-container:hover .avatar-overlay {
+  opacity: 1;
 }
 
-.auth-card input::placeholder {
-  color: var(--text-light);
+.upload-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid white;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.auth-button {
-  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  width: 100%;
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-medium);
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.auth-button:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-large);
-}
-
-.auth-button:active {
-  transform: translateY(0);
-}
-
-.auth-card p {
-  color: var(--text-secondary);
-  margin: 1.5rem 0 0 0;
-  font-size: 0.875rem;
-}
-
-.auth-card a {
-  color: var(--primary-purple);
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s ease;
-}
-
-.auth-card a:hover {
-  color: var(--secondary-purple);
-  text-decoration: underline;
-}
-
-/* Animation for smooth transitions */
-.auth-content {
-  animation: fadeInUp 0.6s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 </style>

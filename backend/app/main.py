@@ -1,11 +1,49 @@
-from fastapi import FastAPI, HTTPException, Body, Depends, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Body, Depends, UploadFile, File, Form, Request, Header
+from fastapi.staticfiles import StaticFiles
+import asyncio
+from starlette.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from .summarizer.text_processor import TextProcessor
 from .summarizer.summarization_model import SummarizationModel
 from .models.user import UserSchema, UserLoginSchema, TokenSchema
-from .database.mongo import user_collection, create_unique_index, client
-from .auth.auth_handler import get_hashed_password, verify_password, sign_jwt, decode_jwt
+from .database.mongo import user_collection, create_unique_index, client, history_collection
+from .auth.auth_handler import get_hashed_password, verify_password, sign_jwt, decode_jwt, verify_google_token
+from .routers.users import router as user_router
+from .routers.history import router as history_router
+from decouple import config
+import os
+import warnings
+# Suppress FutureWarning from google.generativeai
+warnings.filterwarnings("ignore", category=FutureWarning)
+import google.generativeai as genai
+from pathlib import Path
+from datetime import datetime
+
+# ... (Previous imports and initialization code remains the same up to app definition)
+
+# DEBUG: Print current directory
+print(f"DEBUG: Current Directory: {os.getcwd()}")
+
+# Explicitly find .env file
+env_path = Path(__file__).resolve().parent.parent / '.env'
+# ... (Env loading logic remains same)
+if env_path.exists():
+    from decouple import Config, RepositoryEnv
+    config = Config(RepositoryEnv(env_path))
+
+GOOGLE_API_KEY = config("GOOGLE_API_KEY", default=None)
+# ... (Gemini init logic remains same)
+if GOOGLE_API_KEY:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        gemini_model = "active" 
+    except Exception as e:
+        gemini_model = None
+else:
+    gemini_model = None
+
+import textwrap
 
 # Try to import full file processor, fallback to simple one
 try:
@@ -27,21 +65,95 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="backend/static"), name="static")
+
+# Include Routers
+app.include_router(user_router, prefix="/users", tags=["users"])
+app.include_router(history_router, prefix="/api", tags=["history"]) 
+
 @app.on_event("startup")
 async def startup_db_client():
     await create_unique_index()
+    print("DEBUG: Routes registered:")
+    for route in app.routes:
+        print(f" - {route.path} ({route.name})")
 
 text_processor = TextProcessor()
 summarization_model = SummarizationModel()
-
 
 class TextRequest(BaseModel):
     text: str
     num_sentences: int | None = 5
 
+def summarize_with_ai(text: str, num_sentences: int) -> str:
+    if not gemini_model:
+        return "AI system is offline (API Key missing or SDK Init failed)."
+    
+    # Strategies: Multi-Model Fallback Priority (Updated based on Diagnostic)
+    strategies = [
+        {'model': 'gemini-2.5-flash', 'desc': 'Gemini 2.5 Flash (New & Working)'}, 
+        {'model': 'gemini-2.0-flash-lite-preview-02-05', 'desc': 'Gemini 2.0 Flash Lite Preview'},
+        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash'},
+    ]
+
+    last_error = None
+    
+    prompt = textwrap.dedent(f"""
+        You are a professional summarizer. Please summarize the following text into approximately {num_sentences} sentences.
+        
+        Requirements:
+        - Capture the main points accurately.
+        - Maintain the original language of the text (Thai or English).
+        - Output ONLY the summary text, no preamble.
+        
+        Text:
+        {text[:20000]}
+    """)
+
+    # Try models in order with Smart Retry (Exponential Backoff)
+    retry_delay = 1
+    
+    for i, strategy in enumerate(strategies):
+        model_name = strategy['model']
+        
+        # Exponential Backoff before retrying (if not the first attempt)
+        if i > 0:
+            print(f"DEBUG: Waiting {retry_delay}s before trying next model...")
+            import time
+            time.sleep(retry_delay)
+            retry_delay *= 2  # 1s, 2s, 4s...
+            
+        try:
+            print(f"DEBUG: Trying {strategy['desc']} (Model: {model_name})...")
+            
+            # Configure with the single available key
+            genai.configure(api_key=GOOGLE_API_KEY)
+            
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            
+            if response.text:
+                print(f"DEBUG: Success with {model_name}")
+                return response.text.strip()
+            
+        except Exception as e:
+            # Log error and continue to next model
+            print(f"DEBUG: Failed with {model_name}: {e}")
+            last_error = e
+            
+            # If 429 (Quota), we MUST stop hammering (Backoff is already applied above for next loop)
+            # But if it's the LAST model, we stop naturally.
+            continue 
+    
+    # If all failed
+    return f"AI Service Error: All models failed. System busy or quota exceeded. Last error: {str(last_error)}"
+
+
 
 @app.get("/health")
 async def health_check():
+    # ... (Same health check)
     db_ok = True
     try:
         await client.admin.command('ping')
@@ -50,9 +162,10 @@ async def health_check():
     return {
         "status": "ok", 
         "db": db_ok,
-        "file_processor_mode": FILE_PROCESSOR_MODE,
-        "supported_file_types": "TXT only" if FILE_PROCESSOR_MODE == "simple" else "PDF, DOC, DOCX, TXT"
+        "ai_engine": "active" if gemini_model else "inactive",
     }
+
+
 
 @app.post("/register", response_model=TokenSchema, tags=["auth"])
 async def register_user(user: UserSchema = Body(...)):
@@ -77,46 +190,161 @@ async def user_login(user: UserLoginSchema = Body(...)):
     
     raise HTTPException(status_code=401, detail="Invalid email or password.")
 
+@app.post("/auth/google", tags=["auth"])
+async def google_login(token_data: dict = Body(...)):
+    print(f"DEBUG: /auth/google received payload: {token_data}")
+    token = token_data.get("token")
+    if not token:
+        raise HTTPException(status_code=400, detail="Token is required")
+        
+    # Verify token in threadpool to avoid blocking async event loop
+    user_info = await run_in_threadpool(verify_google_token, token)
+    if not user_info:
+        raise HTTPException(status_code=400, detail="Invalid Google Token")
+    
+    email = user_info.get("email")
+    name = user_info.get("name")
+    google_id = user_info.get("sub")
+    avatar = user_info.get("picture")
+    
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not found in token")
+
+    # Check if user exists
+    user = await user_collection.find_one({"email": email})
+    
+    if user:
+        # If user exists, return token
+        return sign_jwt(str(user["_id"]))
+    
+    # If user does not exist, create new user
+    new_user_data = {
+        "username": name,
+        "email": email,
+        "password": "", # No password for Google users
+        "google_id": google_id,
+        "avatar_url": avatar
+    }
+    
+    new_user = await user_collection.insert_one(new_user_data)
+    return sign_jwt(str(new_user.inserted_id))
+
 @app.post("/summarize")
-def summarize_text(request: TextRequest):
+async def summarize_text(
+    request: TextRequest, 
+    authorization: str | None = Header(default=None)
+):
     try:
         if not request.text:
             raise HTTPException(status_code=400, detail="Input text cannot be empty.")
         
+        # 1. Basic Summary
         processed_text = text_processor.clean_text(request.text)
-        summary = summarization_model.summarize(processed_text, num_sentences=request.num_sentences or 5)
         
-        return {"original_text": request.text, "summary": summary}
+        # Parallel Execution
+        basic_task = run_in_threadpool(summarization_model.summarize, processed_text, num_sentences=request.num_sentences or 5)
+        ai_task = run_in_threadpool(summarize_with_ai, request.text, num_sentences=request.num_sentences or 5)
+        
+        basic_summary, ai_summary = await asyncio.gather(basic_task, ai_task)
+        
+        result = {
+            "original_text": request.text, 
+            "basic_summary": basic_summary,
+            "ai_summary": ai_summary,
+            "comparison_mode": True
+        }
+
+        # Auto-save history if user is logged in
+        if authorization:
+            try:
+                # Remove 'Bearer ' prefix if present
+                token = authorization.split(" ")[1] if " " in authorization else authorization
+                decoded = decode_jwt(token)
+                if decoded:
+                    user_id = decoded["user_id"]
+                    
+                    history_item = {
+                        "user_id": user_id,
+                        "title": request.text[:50] + "..." if len(request.text) > 50 else request.text,
+                        "original_text": request.text,
+                        "summary_result": result,
+                        "created_at": datetime.utcnow(),
+                        "is_favorite": False
+                    }
+                    await history_collection.insert_one(history_item)
+                    print(f"DEBUG: History saved for user {user_id}")
+            except Exception as e:
+                print(f"DEBUG: Failed to save history: {e}")
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/summarize-file")
 async def summarize_file(
     file: UploadFile = File(...),
-    num_sentences: int = Form(5)
+    num_sentences: int = Form(5),
+    authorization: str | None = Header(default=None)
 ):
     try:
+        from starlette.concurrency import run_in_threadpool
+
         # Validate file
         file_processor.validate_file(file)
         
-        # Extract text from file
+        # Extract text
         extracted_text = await file_processor.extract_text_from_file(file)
         
         if not extracted_text:
             raise HTTPException(status_code=400, detail="ไม่พบเนื้อหาในไฟล์")
         
         # Process and summarize text
-        processed_text = text_processor.clean_text(extracted_text)
-        summary = summarization_model.summarize(processed_text, num_sentences=num_sentences)
+        processed_text = await run_in_threadpool(text_processor.clean_text, extracted_text)
         
-        return {
+        # Parallel Execution
+        basic_task = run_in_threadpool(summarization_model.summarize, processed_text, num_sentences=num_sentences)
+        ai_task = run_in_threadpool(summarize_with_ai, extracted_text, num_sentences=num_sentences)
+        
+        basic_summary, ai_summary = await asyncio.gather(basic_task, ai_task)
+        
+        result = {
             "filename": file.filename,
             "file_type": file.content_type,
             "extracted_text_length": len(extracted_text),
-            "summary": summary
+            "basic_summary": basic_summary,
+            "ai_summary": ai_summary,
+            "comparison_mode": True
         }
+
+        # Auto-save history if user is logged in
+        if authorization:
+            try:
+                # Remove 'Bearer ' prefix if present
+                token = authorization.split(" ")[1] if " " in authorization else authorization
+                decoded = decode_jwt(token)
+                if decoded:
+                    user_id = decoded["user_id"]
+                    
+                    history_item = {
+                        "user_id": user_id,
+                        "title": (file.filename + ": " + extracted_text[:30] + "...") if len(extracted_text) > 30 else file.filename,
+                        "original_text": extracted_text,
+                        "summary_result": result,
+                        "created_at": datetime.utcnow(),
+                        "is_favorite": False
+                    }
+                    await history_collection.insert_one(history_item)
+                    print(f"DEBUG: File History saved for user {user_id}")
+            except Exception as e:
+                print(f"DEBUG: Failed to save file history: {e}")
+
+        return result
         
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการประมวลผลไฟล์: {str(e)}")
+
+@app.get("/debug-routes")
+def debug_routes():
+    return {"routes": [{"path": route.path, "name": route.name} for route in app.routes]}
