@@ -1,4 +1,33 @@
-from backend.app.main import app
-
-# Vercel expects a module called 'app' or 'handler' to be available for Serverless Functions
-# referencing the FastAPI instance.
+try:
+    from backend.app.main import app
+except Exception as e:
+    import traceback
+    error_trace = traceback.format_exc()
+    print(f"CRITICAL STARTUP ERROR: {e}")
+    print(error_trace)
+    
+    # Fallback App to report error
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    
+    app = FastAPI()
+    
+    @app.get("/health")
+    async def health_check():
+        return {
+            "status": "error",
+            "startup_error": str(e),
+            "traceback": error_trace.splitlines()
+        }
+    
+    @app.api_route("/{path_name:path}", methods=["GET", "POST", "PUT", "DELETE"])
+    async def catch_all(path_name: str):
+         return JSONResponse(
+            status_code=500,
+            content={
+                "status": "critical_startup_error",
+                "message": "The backend failed to start.",
+                "error": str(e),
+                "traceback": error_trace.splitlines() 
+            }
+        )
