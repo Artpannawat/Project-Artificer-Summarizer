@@ -192,42 +192,53 @@ async def user_login(user: UserLoginSchema = Body(...)):
 
 @app.post("/auth/google", tags=["auth"])
 async def google_login(token_data: dict = Body(...)):
-    print(f"DEBUG: /auth/google received payload: {token_data}")
-    token = token_data.get("token")
-    if not token:
-        raise HTTPException(status_code=400, detail="Token is required")
+    try:
+        print(f"DEBUG: /auth/google received payload: {token_data}")
+        token = token_data.get("token")
+        if not token:
+            raise HTTPException(status_code=400, detail="Token is required")
+            
+        # Verify token in threadpool to avoid blocking async event loop
+        user_info = await run_in_threadpool(verify_google_token, token)
+        if not user_info:
+            raise HTTPException(status_code=400, detail="Invalid Google Token (Verification Failed)")
         
-    # Verify token in threadpool to avoid blocking async event loop
-    user_info = await run_in_threadpool(verify_google_token, token)
-    if not user_info:
-        raise HTTPException(status_code=400, detail="Invalid Google Token")
-    
-    email = user_info.get("email")
-    name = user_info.get("name")
-    google_id = user_info.get("sub")
-    avatar = user_info.get("picture")
-    
-    if not email:
-        raise HTTPException(status_code=400, detail="Email not found in token")
+        email = user_info.get("email")
+        name = user_info.get("name")
+        google_id = user_info.get("sub")
+        avatar = user_info.get("picture")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in token")
 
-    # Check if user exists
-    user = await user_collection.find_one({"email": email})
-    
-    if user:
-        # If user exists, return token
-        return sign_jwt(str(user["_id"]))
-    
-    # If user does not exist, create new user
-    new_user_data = {
-        "username": name,
-        "email": email,
-        "password": "", # No password for Google users
-        "google_id": google_id,
-        "avatar_url": avatar
-    }
-    
-    new_user = await user_collection.insert_one(new_user_data)
-    return sign_jwt(str(new_user.inserted_id))
+        # Check if user exists
+        try:
+            user = await user_collection.find_one({"email": email})
+        except Exception as db_e:
+            raise HTTPException(status_code=500, detail=f"Database Connection Error: {str(db_e)}")
+        
+        if user:
+            # If user exists, return token
+            return sign_jwt(str(user["_id"]))
+        
+        # If user does not exist, create new user
+        new_user_data = {
+            "username": name,
+            "email": email,
+            "password": "", # No password for Google users
+            "google_id": google_id,
+            "avatar_url": avatar
+        }
+        
+        new_user = await user_collection.insert_one(new_user_data)
+        return sign_jwt(str(new_user.inserted_id))
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_msg = f"Internal Server Error: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @app.post("/summarize")
 async def summarize_text(
