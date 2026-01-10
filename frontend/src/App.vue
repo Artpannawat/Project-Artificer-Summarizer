@@ -5,16 +5,9 @@
       <div class="navbar-content">
         <div class="logo-section">
           <div class="logo-icon">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="16" fill="url(#gradient1)"/>
-              <path d="M12 10h8l-2 6h2l-6 8 2-8h-2l-2-6z" fill="white"/>
-              <defs>
-                <linearGradient id="gradient1" x1="0" y1="0" x2="32" y2="32">
-                  <stop offset="0%" stop-color="#8B5CF6"/>
-                  <stop offset="100%" stop-color="#A855F7"/>
-                </linearGradient>
-              </defs>
-            </svg>
+          <div class="logo-icon">
+            <img src="/logo.png" alt="Artificer Logo" class="app-logo-img" />
+          </div>
           </div>
           <span class="logo-text">Artificer</span>
           
@@ -471,6 +464,13 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.app-logo-img {
+  width: 48px;
+  height: auto;
+  margin-right: 12px; /* Spacing next to text */
+  display: block;
 }
 
 </style>
