@@ -1,9 +1,11 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from decouple import config
 
+import certifi
 MONGO_DETAILS = config("MONGO_DETAILS", default="mongodb://localhost:27017")
 
-client = AsyncIOMotorClient(MONGO_DETAILS)
+# Use certifi for SSL certificate verification (fixes Vercel connection issues)
+client = AsyncIOMotorClient(MONGO_DETAILS, tlsCAFile=certifi.where())
 db = client.artificer_summarizer # Export 'db' as well for flexible usage
 database = db # Alias for existing code
 user_collection = database.get_collection("users")

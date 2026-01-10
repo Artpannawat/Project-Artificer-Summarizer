@@ -18,3 +18,5 @@ pymupdf
 docx2txt
 networkx
 google-genai
+dnspython
+certifi
