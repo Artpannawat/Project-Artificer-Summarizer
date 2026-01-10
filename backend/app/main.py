@@ -186,7 +186,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 
 
-API_VERSION = "v1.6-ui-validated"
+API_VERSION = "v1.7-route-busting"
 
 @app.get("/health")
 async def health_check():
@@ -217,7 +217,7 @@ async def health_check():
 
 
 
-@app.post("/register", response_model=TokenSchema, tags=["auth"])
+@app.post("/register_v2", response_model=TokenSchema, tags=["auth"])
 async def register_user(user: UserSchema = Body(...)):
     print(f"DEBUG: Registering user {user.email} with password length {len(user.password)}")
     try:
