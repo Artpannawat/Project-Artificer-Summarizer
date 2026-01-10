@@ -186,7 +186,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 
 
-API_VERSION = "v1.5-force-rebuild"
+API_VERSION = "v1.6-ui-validated"
 
 @app.get("/health")
 async def health_check():
