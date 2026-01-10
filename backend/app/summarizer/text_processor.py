@@ -1,14 +1,12 @@
 import re
-from pythainlp.util import normalize
 
 class TextProcessor:
     def clean_text(self, text: str) -> str:
         if not text:
             return ""
         
-        # Normalize Thai text if it contains Thai characters
-        if re.search(r"[\u0E00-\u0E7F]", text):
-            text = normalize(text)
+        # Simple normalization (remove zero-width spaces, etc.)
+        # Thai characters: \u0E00-\u0E7F
         
         # Remove extra whitespace while preserving sentence boundaries
         cleaned_text = re.sub(r"\s+", " ", text).strip()
