@@ -1,5 +1,6 @@
 import re
 
+class SummarizationModel:
     def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> str:
         if not text:
             return ""
