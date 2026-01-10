@@ -18,7 +18,9 @@ import hashlib
 def get_hashed_password(password: str) -> str:
     # Pre-hash with SHA256 to bypass bcrypt's 72-byte limit
     # This ensures any length password is safe
+    print(f"DEBUG: Hashing password. Original length: {len(password)}")
     password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    print(f"DEBUG: Pre-hashed length: {len(password_hash)} (Should be 64)")
     return pwd_context.hash(password_hash)
 
 def verify_password(password: str, hashed_password: str) -> bool:
