@@ -476,11 +476,18 @@ export default {
 
 @media (max-width: 640px) {
   .app-title {
-    font-size: 1.25rem;
+    font-size: 1.5rem !important;
+    text-align: center;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
   }
   
   .app-subtitle {
-    display: none;
+    font-size: 0.9rem !important;
+    text-align: center;
+    padding: 0 1rem;
+    display: block !important; /* Force show, but smaller */
+    opacity: 0.9;
   }
 
   .logo-text {
@@ -488,11 +495,23 @@ export default {
   }
 
   .navbar-content {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
   }
   
   .right-section {
     gap: 0.5rem;
+  }
+
+  .logo-section {
+    flex: 0 0 auto;
+  }
+
+  .navbar-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 }
 </style>
