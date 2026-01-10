@@ -9,8 +9,17 @@ except Exception as e:
     # Fallback App to report error
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
+    from fastapi.middleware.cors import CORSMiddleware
     
     app = FastAPI()
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     
     @app.get("/health")
     async def health_check():
@@ -20,7 +29,7 @@ except Exception as e:
             "traceback": error_trace.splitlines()
         }
     
-    @app.api_route("/{path_name:path}", methods=["GET", "POST", "PUT", "DELETE"])
+    @app.api_route("/{path_name:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     async def catch_all(path_name: str):
          return JSONResponse(
             status_code=500,
