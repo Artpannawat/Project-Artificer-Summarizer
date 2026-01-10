@@ -186,6 +186,8 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 
 
+API_VERSION = "v1.3-inline-sha256-fix"
+
 @app.get("/health")
 async def health_check():
     db_status = "ok"
@@ -205,6 +207,7 @@ async def health_check():
     
     return {
         "status": "ok", 
+        "version": API_VERSION,
         "db": db_status,
         "db_error": db_error,
         "startup_errors": STARTUP_ERRORS,
