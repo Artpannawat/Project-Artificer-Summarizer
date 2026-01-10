@@ -186,7 +186,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 
 
-API_VERSION = "v1.3-inline-sha256-fix"
+API_VERSION = "v1.4-hardcoded-auth"
 
 @app.get("/health")
 async def health_check():
@@ -225,16 +225,22 @@ async def register_user(user: UserSchema = Body(...)):
         if user_exists:
             raise HTTPException(status_code=400, detail="Email already registered.")
         
-        # INLINE FIX: Pre-hash with SHA256 to absolutely guarantee < 72 bytes
+        # INLINE FIX: Self-contained hashing to avoid Import Errors and bypass limits
         import hashlib
-        from backend.app.auth.auth_handler import pwd_context
+        from passlib.context import CryptContext
+        
+        # Define context locally to ensure it exists
+        local_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         
         print(f"DEBUG: Original Password Length: {len(user.password)}")
+        # 1. Pre-hash with SHA256 (Always 64 hex chars)
         pre_hash = hashlib.sha256(user.password.encode('utf-8')).hexdigest()
         print(f"DEBUG: Pre-hashed Length: {len(pre_hash)}")
         
-        hashed_password = pwd_context.hash(pre_hash)
+        # 2. Hash with Bcrypt
+        hashed_password = local_pwd_context.hash(pre_hash)
         user.password = hashed_password
+        
         new_user = await user_collection.insert_one(user.model_dump())
         
         # Ensure we return a string ID
