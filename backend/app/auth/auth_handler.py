@@ -24,9 +24,22 @@ def get_hashed_password_v2(password: str) -> str:
     return pwd_context.hash(password_hash)
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    # Pre-hash input before verifying
-    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-    return pwd_context.verify(password_hash, hashed_password)
+    try:
+        # Check for our custom Fallback format (from Vercel robust mode)
+        if hashed_password.startswith("SHA256_FALLBACK:"):
+            print("DEBUG: Verifying using SHA256 Fallback mode")
+            expected_hash = hashed_password.split("SHA256_FALLBACK:")[1]
+            # Simple check: Is sha256(password) == suffix?
+            current_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+            return current_hash == expected_hash
+            
+        # Standard Mode (Bcrypt with SHA256 pre-hashing)
+        # Pre-hash input before verifying to match register_v2 logic
+        password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        return pwd_context.verify(password_hash, hashed_password)
+    except Exception as e:
+        print(f"ERROR: Password verification failed: {e}")
+        return False
 
 def sign_jwt(user_id: str) -> Dict[str, str]:
     payload = {
