@@ -502,6 +502,38 @@
   background: rgba(239, 68, 68, 0.05);
 }
 
+/* Modern Copy Button (Base) */
+.copy-button-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--background-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+[data-theme='dark'] .copy-button-icon {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.copy-button-icon:hover {
+  border-color: var(--primary-purple);
+  color: white;
+  background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.copy-button-icon:active {
+  transform: translateY(0) scale(0.95);
+}
+
 /* Responsive Design */
 
 /* Tablet & Small Laptop (1024px) */
@@ -622,9 +654,52 @@
     width: 100%;
   }
 
+  /* Glassmorphic Copy Button */
   .copy-button-icon {
-    padding: 0.75rem;
-    /* Larger touch target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: rgba(139, 92, 246, 0.05);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .copy-button-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.2));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .copy-button-icon:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-purple);
+    color: var(--primary-purple);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+    background: rgba(139, 92, 246, 0.1);
+  }
+
+  .copy-button-icon:hover::before {
+    opacity: 1;
+  }
+
+  .copy-button-icon:active {
+    transform: translateY(0);
+  }
+
+  .copy-button-icon svg {
+    position: relative;
+    z-index: 1;
   }
 }
 
