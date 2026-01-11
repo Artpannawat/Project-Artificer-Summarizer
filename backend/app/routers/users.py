@@ -23,41 +23,58 @@ except OSError:
 
 @router.post("/upload-avatar", dependencies=[Depends(JWTBearer())])
 async def upload_avatar(file: UploadFile = File(...), token: str = Depends(JWTBearer())):
-    # Verify file type
-    if file.content_type not in ["image/jpeg", "image/png"]:
-        raise HTTPException(status_code=400, detail="Only .jpg and .png files are allowed.")
+    # 1. Verify file type
+    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
+        raise HTTPException(status_code=400, detail="Only .jpg, .png, .webp files are allowed.")
     
-    # Check file size (approximate, reading into memory is risky for large files but OK for <5MB limits)
-    # Ideally standard servers handle this, but here we can check if needed.
-    # We will proceed with saving.
-    
-    # Get User ID from Token
+    # 2. Get User ID from Token
     payload = decode_jwt(token)
     user_id = payload.get("user_id")
     if not user_id:
         raise HTTPException(status_code=403, detail="Invalid Token")
 
-    # Generate filename
-    extension = ".jpg" if file.content_type == "image/jpeg" else ".png"
-    filename = f"{user_id}{extension}"
-    file_path = AVATAR_DIR / filename
-
     try:
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        from PIL import Image
+        import io
+        import base64
+        
+        # 3. Read and Process Image
+        # Read file into memory
+        contents = await file.read()
+        image = Image.open(io.BytesIO(contents))
+        
+        # Resize if too large (Max 256x256 for avatar) - Keeps DB small
+        max_size = (256, 256)
+        image.thumbnail(max_size)
+        
+        # Convert back to bytes (JPEG for compression)
+        buffer = io.BytesIO()
+        # Convert RGBA to RGB if needed
+        if image.mode in ('RGBA', 'LA'):
+            background = Image.new(image.mode[:-1], image.size, (255, 255, 255))
+            background.paste(image, image.split()[-1])
+            image = background
+            
+        image.save(buffer, format="JPEG", quality=80)
+        img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        
+        # 4. Create Data URI
+        avatar_url = f"data:image/jpeg;base64,{img_str}"
+
+        # 5. Update MongoDB
+        await user_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"avatar_url": avatar_url}}
+        )
+
+        return {"avatar_url": avatar_url}
+        
+    except ImportError:
+         raise HTTPException(status_code=500, detail="Server Error: Pillow library missing.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
-
-    # Generate URL (assuming mounted at /static)
-    avatar_url = f"/static/avatars/{filename}"
-
-    # Update MongoDB
-    await user_collection.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$set": {"avatar_url": avatar_url}}
-    )
-
-    return {"avatar_url": avatar_url}
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Could not process image: {str(e)}")
 
 @router.get("/me", dependencies=[Depends(JWTBearer())])
 async def get_current_user_profile(token: str = Depends(JWTBearer())):
