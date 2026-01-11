@@ -11,6 +11,7 @@ python-multipart
 google-generativeai
 dnspython
 certifi
+requests
 google-auth
 PyPDF2
 docx2txt
