@@ -286,7 +286,11 @@ export default {
         });
         
         // Update local state immediately
-        this.currentUser.avatar_url = response.data.avatar_url + `?t=${new Date().getTime()}`; // Cache buster
+        if (response.data.avatar_url.startsWith('data:')) {
+           this.currentUser.avatar_url = response.data.avatar_url;
+        } else {
+           this.currentUser.avatar_url = response.data.avatar_url + `?t=${new Date().getTime()}`; // Cache buster for HTTP URLs only
+        }
       } catch (error) {
         alert('Failed to upload avatar');
         console.error(error);
