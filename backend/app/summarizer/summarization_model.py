@@ -15,7 +15,7 @@ class SummarizationModel:
             clean_text = processor.clean_text(text)
             sentences = processor.segment_sentences(clean_text)
             
-            # Filter weak sentences (too short)
+            # Filter weak sentences
             valid_sentences = [s for s in sentences if len(s) >= min_length]
             
             if not valid_sentences:
@@ -24,63 +24,49 @@ class SummarizationModel:
             if len(valid_sentences) <= num_sentences:
                 return " ".join(valid_sentences)
 
-            # 2. TextRank Algorithm Implementation
-            try:
-                import networkx as nx
-                import math
+            # 2. Build Frequency Map (Term Frequency)
+            word_frequencies = {}
+            stopwords = set(["the", "is", "in", "at", "of", "on", "and", "a", "an", "to", "for", "with", "user", "defined", "การ", "ความ", "ที่", "ซึ่ง", "อัน", "ของ", "และ", "หรือ", "ใน", "โดย", "เป็น", "ไป", "มา", "จะ", "ให้", "ได้"])
+            
+            for sentence in valid_sentences:
+                # Simple tokenize by space
+                words = sentence.split()
+                for word in words:
+                    w_lower = word.lower()
+                    if w_lower not in stopwords and len(w_lower) > 1:
+                        word_frequencies[w_lower] = word_frequencies.get(w_lower, 0) + 1
 
-                # Build Graph
-                graph = nx.Graph()
-                
-                # Tokenize all sentences once
-                sentence_tokens = [set(processor.tokenize_words(s)) for s in valid_sentences]
-                
-                # Add nodes
-                for i in range(len(valid_sentences)):
-                    graph.add_node(i)
-                
-                # Calculate Similarity (Jaccard Index)
-                for i in range(len(valid_sentences)):
-                    for j in range(i + 1, len(valid_sentences)):
-                        words1 = sentence_tokens[i]
-                        words2 = sentence_tokens[j]
-                        
-                        # Jaccard Similarity
-                        intersection = len(words1.intersection(words2))
-                        union = len(words1.union(words2))
-                        
-                        if union > 0:
-                            similarity = intersection / union
-                            if similarity > 0:
-                                graph.add_edge(i, j, weight=similarity)
+            # Normalize frequencies
+            max_freq = max(word_frequencies.values()) if word_frequencies else 1
+            for word in word_frequencies:
+                word_frequencies[word] = word_frequencies[word] / max_freq
 
-                # Run PageRank
-                scores = nx.pagerank(graph, weight='weight')
+            # 3. Score Sentences
+            sentence_scores = {}
+            for i, sentence in enumerate(valid_sentences):
+                score = 0
+                words = sentence.split()
+                for word in words:
+                    w_lower = word.lower()
+                    if w_lower in word_frequencies:
+                        score += word_frequencies[w_lower]
                 
-                # Sort by score
-                ranked_sentences = sorted(((scores[i], s) for i, s in enumerate(valid_sentences)), reverse=True)
-                
-                # Select top N
-                top_sentences = [s for score, s in ranked_sentences[:num_sentences]]
-                
-                # Reorder by appearance in original text
-                # We need to map back to original indices
-                final_summary = []
-                for sentence in valid_sentences:
-                    if sentence in top_sentences:
-                        final_summary.append(sentence)
-                        if len(final_summary) >= num_sentences:
-                            break
-                            
-                return " ".join(final_summary)
+                # Normalize by sentence length to avoid bias towards long sentences
+                # But give slight penalty to very short ones
+                if len(words) > 0:
+                     sentence_scores[i] = score / (len(words) ** 0.5) # Soft normalization
 
-            except ImportError:
-                print("WARNING: NetworkX not found. Falling back to simple frequency.")
-                # Fallback logic could go here, or just return start
-                return " ".join(valid_sentences[:num_sentences])
+            # 4. Select Top Sentences (Sorting by Score)
+            top_sentences_indices = sorted(sentence_scores, key=sentence_scores.get, reverse=True)[:num_sentences]
+            
+            # 5. Reorder by original appearance (Coherence)
+            top_sentences_indices.sort()
+            
+            summary = [valid_sentences[i] for i in top_sentences_indices]
+            
+            return " ".join(summary)
 
         except Exception as e:
             print(f"Basic Summarizer Error: {e}")
-            import traceback
-            traceback.print_exc()
+            # Fallback
             return text[:500] + "..."

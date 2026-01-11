@@ -14,70 +14,38 @@ class TextProcessor:
         
         return text
 
-    def tokenize_words(self, text: str) -> list[str]:
-        """
-        Tokenizer for TextRank.
-        Uses Character Trigrams (3-grams) for Thai text to avoid heavy libraries (PyThaiNLP).
-        This works well for similarity/overlap calculations without needing a dictionary.
-        """
-        if not text:
-            return []
-            
-        # 1. Remove spaces to treat as continuous flow (for Thai)
-        text_no_space = text.replace(" ", "")
-        
-        # 2. Generate Character Trigrams
-        # e.g. "สวัสดี" -> ["สวั", "วัส", "ัสด", "สดี"]
-        n = 3
-        if len(text_no_space) < n:
-            return [text_no_space]
-            
-        trigrams = [text_no_space[i:i+n] for i in range(len(text_no_space) - n + 1)]
-        return trigrams
-
     def segment_sentences(self, text: str) -> list[str]:
         """
-        Segment text into partial sentences/phrases using intelligent heuristics.
-        Does not require heavy NLP libraries.
+        Segment text into partial sentences/phrases using punctuation and spacing.
+        Designed for Thai/English mixed text without heavy NLP libraries.
         """
         if not text:
             return []
             
-        # 1. Clean and normalize
-        text = text.strip()
+        # Split by common ending punctuation
+        # Thai often uses space as a sentence delimiter, so we treat large spaces or standard punctuation as splitters.
         
-        # 2. Split by standard punctuation for English parts
-        # Split by: .!? followed by space, or double newline
-        chunks = re.split(r'(?:(?<=[.!?])\s+|\n\s*\n)', text)
+        # 1. Split by standard punctuation (.!?) followed by space
+        chunks = re.split(r'(?<=[.!?])\s+', text)
         
         final_sentences = []
         for chunk in chunks:
-            chunk = chunk.strip()
-            if not chunk: continue
-            
-            # 3. Handling Thai long strings
-            # If a chunk is very long (>150 chars) and contains spaces, it might be multiple Thai sentences
-            if len(chunk) > 150:
-                # Heuristic: Split by spaces that are "likely" sentence breaks
-                # (e.g. not between numbers, not inside English phrases)
-                # For simplicity, we split by 2+ spaces or large distinct gaps
-                sub_parts = re.split(r'\s{2,}', chunk) 
-                
-                # If still too massive, try generating a split on single spaces but grouping them
-                if len(sub_parts) == 1:
-                    words = chunk.split(' ')
-                    current = ""
-                    for word in words:
-                        if len(current) + len(word) < 120:
-                            current += word + " "
-                        else:
-                            final_sentences.append(current.strip())
-                            current = word + " "
-                    if current:
-                        final_sentences.append(current.strip())
-                else:
-                    final_sentences.extend([s.strip() for s in sub_parts if s.strip()])
+            # 2. For Thai, sometimes long sentences are just separated by spaces.
+            # We enforce a split if a segment is very long (>200 chars) and has spaces.
+            if len(chunk) > 200:
+                # Attempt to split by spaces if they look like phrase breaks
+                # (This is a heuristic and not perfect, but better than massive blocks)
+                sub_parts = chunk.split(' ')
+                current_sent = ""
+                for part in sub_parts:
+                    if len(current_sent) + len(part) < 150:
+                        current_sent += part + " "
+                    else:
+                        final_sentences.append(current_sent.strip())
+                        current_sent = part + " "
+                if current_sent:
+                    final_sentences.append(current_sent.strip())
             else:
-                final_sentences.append(chunk)
+                final_sentences.append(chunk.strip())
                 
-        return [s for s in final_sentences if len(s) > 1]
+        return [s for s in final_sentences if s]
