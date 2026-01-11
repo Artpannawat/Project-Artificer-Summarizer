@@ -201,10 +201,18 @@
             </div>
             <h3>Basic Engine (Traditional)</h3>
           </div>
-          <button @click="copyToClipboard(basicSummary)" class="copy-button-icon" title="คัดลอก">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="2"/>
+          <button 
+            @click="copyToClipboard(basicSummary, 'basic')" 
+            class="copy-button-icon" 
+            :class="{ 'copied': copiedState.basic }"
+            :title="copiedState.basic ? 'คัดลอกแล้ว!' : 'คัดลอก'"
+          >
+            <svg v-if="!copiedState.basic" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </div>
@@ -228,10 +236,18 @@
             </div>
             <span class="premium-badge">Recommended</span>
           </div>
-          <button @click="copyToClipboard(aiSummary)" class="copy-button-icon" title="คัดลอก">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="2"/>
+          <button 
+            @click="copyToClipboard(aiSummary, 'ai')" 
+            class="copy-button-icon" 
+            :class="{ 'copied': copiedState.ai }"
+            :title="copiedState.ai ? 'คัดลอกแล้ว!' : 'คัดลอก'"
+          >
+            <svg v-if="!copiedState.ai" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </div>
@@ -272,7 +288,8 @@ export default {
       fileProcessing: false,
       isDragOver: false,
       serverInfo: null,
-      cooldown: false // Spam Protection
+      cooldown: false, // Spam Protection
+      copiedState: { basic: false, ai: false }
     }
   },
   
@@ -452,10 +469,15 @@ export default {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
     },
     
-    async copyToClipboard(text) {
+    async copyToClipboard(text, type) {
       try {
         await navigator.clipboard.writeText(text)
-        alert('คัดลอกเรียบร้อยแล้ว')
+        // Set copied state
+        this.copiedState[type] = true
+        // Reset after 2 seconds
+        setTimeout(() => {
+          this.copiedState[type] = false
+        }, 2000)
       } catch (err) {
         console.error('Failed to copy text: ', err)
       }
