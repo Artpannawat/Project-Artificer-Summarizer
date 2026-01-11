@@ -11,41 +11,22 @@ JWT_SECRET = config("JWT_SECRET", default="your-super-secret-key")
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default=None)
 ALGORITHM = "HS256"
 
-# Robust CryptContext Initialization
-try:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-except Exception as e:
-    print(f"WARNING: CryptContext failed to load (likely bcrypt missing): {e}")
-    pwd_context = None
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 import hashlib
 
 def get_hashed_password_v2(password: str) -> str:
-    # Pre-hash with SHA256
+    # Pre-hash with SHA256 to bypass bcrypt's 72-byte limit
+    # This ensures any length password is safe
     print(f"DEBUG: Hashing password. Original length: {len(password)}")
     password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-    
-    if pwd_context:
-        return pwd_context.hash(password_hash)
-    else:
-        # Fallback: Plain SHA256 (prefixed)
-        return "SHA256:" + password_hash
+    print(f"DEBUG: Pre-hashed length: {len(password_hash)} (Should be 64)")
+    return pwd_context.hash(password_hash)
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    # Pre-hash input
+    # Pre-hash input before verifying
     password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-    
-    if hashed_password.startswith("SHA256:"):
-        return ("SHA256:" + password_hash) == hashed_password
-        
-    if pwd_context:
-        try:
-            return pwd_context.verify(password_hash, hashed_password)
-        except Exception as e:
-            print(f"Verify error: {e}")
-            return False
-    
-    return False
+    return pwd_context.verify(password_hash, hashed_password)
 
 def sign_jwt(user_id: str) -> Dict[str, str]:
     payload = {

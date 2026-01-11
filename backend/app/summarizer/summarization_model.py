@@ -9,6 +9,8 @@ class SummarizationModel:
 
         try:
             # 1. Preprocessing & Segmentation
+            # We manually import TextProcessor here to avoid circular imports if any, 
+            # but ideally it should be Dependency Injected. For now, we use local logic or helper.
             from backend.app.summarizer.text_processor import TextProcessor
             processor = TextProcessor()
             

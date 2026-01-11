@@ -13,6 +13,3 @@ dnspython
 certifi
 requests
 google-auth
-PyPDF2
-PyMuPDF
-docx2txt

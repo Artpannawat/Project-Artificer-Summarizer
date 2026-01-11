@@ -88,27 +88,12 @@ app.add_middleware(
 # Mount static files
 # Mount static files (Safely)
 import os
-
-# Robust path resolution: Get backend directory relative to this file
-# file: backend/app/main.py -> parent: backend/app -> parent: backend
-BASE_DIR = Path(__file__).resolve().parent.parent
-static_dir = BASE_DIR / "static"
-avatars_dir = static_dir / "avatars"
-
-# Ensure directories exist
+static_dir = Path("backend/static")
 if not static_dir.exists():
-    static_dir.mkdir(parents=True, exist_ok=True)
-    print(f"DEBUG: Created static directory at {static_dir}")
-
-if not avatars_dir.exists():
-    avatars_dir.mkdir(parents=True, exist_ok=True)
-    print(f"DEBUG: Created avatars directory at {avatars_dir}")
-
-# Vercel fallback (only if write permissions fail locally, which shouldn't happen on localhost)
-if not os.access(static_dir, os.W_OK) and os.path.exists("/tmp"):
+    # If static dir missing (common in Vercel if empty), use /tmp
     static_dir = Path("/tmp/static")
     static_dir.mkdir(parents=True, exist_ok=True)
-    print(f"DEBUG: Falling back to {static_dir} due to permissions")
+    print(f"DEBUG: 'backend/static' not found. Mounting {static_dir} instead.")
 
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 

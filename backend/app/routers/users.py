@@ -11,15 +11,9 @@ router = APIRouter()
 
 # Ensure avatar directory exists
 # Ensure avatar directory exists
-# Ensure avatar directory exists
-# Robust path resolution: Get backend directory relative to this file
-# file: backend/app/routers/users.py -> ... -> backend
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-AVATAR_DIR = BASE_DIR / "static" / "avatars"
-
+AVATAR_DIR = Path("backend/static/avatars")
 try:
-    if not AVATAR_DIR.exists():
-        AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 except OSError:
     # Fallback for Read-Only Filesystems (e.g. Vercel)
     # Note: Files in /tmp are ephemeral and will not persist across restarts.

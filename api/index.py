@@ -2,8 +2,7 @@ import traceback
 import sys
 import os
 
-# FORCE_UPDATE_V2_2 - Deploying Login (requests) and PDF (PyMuPDF) Fix
-# This comment forces Vercel to rebuild and pick up requirements.txt changes
+# FORCE_UPDATE_V1_5 = True
 
 # Add the project root to sys.path to ensure 'backend' module is found
 current_dir = os.path.dirname(os.path.abspath(__file__))
