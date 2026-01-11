@@ -1,4 +1,6 @@
 import re
+import math
+from collections import Counter
 
 class SummarizationModel:
     def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> str:
@@ -9,8 +11,6 @@ class SummarizationModel:
 
         try:
             # 1. Preprocessing & Segmentation
-            # We manually import TextProcessor here to avoid circular imports if any, 
-            # but ideally it should be Dependency Injected. For now, we use local logic or helper.
             from backend.app.summarizer.text_processor import TextProcessor
             processor = TextProcessor()
             
@@ -26,47 +26,77 @@ class SummarizationModel:
             if len(valid_sentences) <= num_sentences:
                 return " ".join(valid_sentences)
 
-            # 2. Build Frequency Map (Term Frequency)
-            word_frequencies = {}
-            stopwords = set(["the", "is", "in", "at", "of", "on", "and", "a", "an", "to", "for", "with", "user", "defined", "การ", "ความ", "ที่", "ซึ่ง", "อัน", "ของ", "และ", "หรือ", "ใน", "โดย", "เป็น", "ไป", "มา", "จะ", "ให้", "ได้"])
+            # 2. TextRank Implementation (Graph-Based)
             
-            for sentence in valid_sentences:
-                # Simple tokenize by space
-                words = sentence.split()
-                for word in words:
-                    w_lower = word.lower()
-                    if w_lower not in stopwords and len(w_lower) > 1:
-                        word_frequencies[w_lower] = word_frequencies.get(w_lower, 0) + 1
+            # Extended Stopwords for Thai/English
+            stopwords = set([
+                "the", "is", "in", "at", "of", "on", "and", "a", "an", "to", "for", "with", "user", "defined", "this", "that", "it",
+                "การ", "ความ", "ที่", "ซึ่ง", "อัน", "ของ", "และ", "หรือ", "ใน", "โดย", "เป็น", "ไป", "มา", "จะ", "ให้", "ได้", "แต่",
+                "จาก", "ว่า", "เพื่อ", "กับ", "แก่", "แห่ง", "นั้น", "นี้", "กัน", "แล้ว", "จึง", "อยู่", "ถูก", "เอา"
+            ])
 
-            # Normalize frequencies
-            max_freq = max(word_frequencies.values()) if word_frequencies else 1
-            for word in word_frequencies:
-                word_frequencies[word] = word_frequencies[word] / max_freq
+            # Pre-compute word sets for each sentence (Jaccard Similarity needs sets)
+            sentence_words = []
+            for sent in valid_sentences:
+                words = [w.lower() for w in sent.split() if w.lower() not in stopwords]
+                sentence_words.append(words)
 
-            # 3. Score Sentences
-            sentence_scores = {}
-            for i, sentence in enumerate(valid_sentences):
-                score = 0
-                words = sentence.split()
-                for word in words:
-                    w_lower = word.lower()
-                    if w_lower in word_frequencies:
-                        score += word_frequencies[w_lower]
-                
-                # Normalize by sentence length to avoid bias towards long sentences
-                # But give slight penalty to very short ones
-                if len(words) > 0:
-                     sentence_scores[i] = score / (len(words) ** 0.5) # Soft normalization
+            # Build Similarity Matrix
+            n = len(valid_sentences)
+            scores = [1.0] * n  # Initial PageRank scores
+            damping = 0.85
+            iterations = 10
+            
+            # Similar to PageRank: score(i) = (1-d) + d * sum(score(j) * weight(j,i) / sum_weight(j))
+            # Simplified TextRank: score(i) = (1-d) + d * sum(similarity(i,j) * score(j))
+            # We use Jaccard Similarity for simplicity and speed.
+            
+            def jaccard_similarity(words1, words2):
+                set1 = set(words1)
+                set2 = set(words2)
+                if not set1 or not set2:
+                    return 0.0
+                intersection = len(set1.intersection(set2))
+                union = len(set1) + len(set2) - intersection # Simple union count
+                # Avoid log(0) complexity, just simple ratio
+                return intersection / (math.log(len(set1) + len(set2)) + 1.0) # Softened Jaccard
 
-            # 4. Select Top Sentences (Sorting by Score)
-            top_sentences_indices = sorted(sentence_scores, key=sentence_scores.get, reverse=True)[:num_sentences]
+            # Run Power Method Iterations
+            for _ in range(iterations):
+                new_scores = [0.0] * n
+                for i in range(n):
+                    sum_similarity = 0.0
+                    for j in range(n):
+                        if i == j: continue
+                        
+                        sim = jaccard_similarity(sentence_words[i], sentence_words[j])
+                        
+                        # Add contribution from neighbor j
+                        # In standard TextRank, we normalized by the sum of weights of j's neighbors.
+                        # Here, for "Basic" speed, we use a simplified unweighted summation logic or just raw similarity.
+                        # Let's use weighted sum.
+                        
+                        sum_similarity += sim * scores[j]
+                    
+                    new_scores[i] = (1 - damping) + damping * sum_similarity
+                scores = new_scores
+
+            # 4. Select Top Sentences
+            # Create pairs of (index, score)
+            ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:num_sentences]
             
             # 5. Reorder by original appearance (Coherence)
-            top_sentences_indices.sort()
+            ranked_indices.sort()
             
-            summary = [valid_sentences[i] for i in top_sentences_indices]
+            summary = [valid_sentences[i] for i in ranked_indices]
             
-            return " ".join(summary)
+            joined_summary = " ".join(summary)
+            
+            # If summary is too short, fallback to first few sentences
+            if len(joined_summary) < 100:
+                 return " ".join(valid_sentences[:num_sentences])
+                 
+            return joined_summary
 
         except Exception as e:
             print(f"Basic Summarizer Error: {e}")

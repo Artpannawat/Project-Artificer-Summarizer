@@ -17,35 +17,55 @@ class TextProcessor:
     def segment_sentences(self, text: str) -> list[str]:
         """
         Segment text into partial sentences/phrases using punctuation and spacing.
-        Designed for Thai/English mixed text without heavy NLP libraries.
+        Enhanced for Thai/English mixed text to reduce "choppy" output.
         """
         if not text:
             return []
             
-        # Split by common ending punctuation
-        # Thai often uses space as a sentence delimiter, so we treat large spaces or standard punctuation as splitters.
+        # 1. Clean up excessive whitespace first
+        text = re.sub(r' +', ' ', text.strip())
         
-        # 1. Split by standard punctuation (.!?) followed by space
+        # 2. Split by standard punctuation (.!?) followed by space
+        # Lookbehind for punctuation, lookahead for space or end of string
+        # Keep punctuation attached to the previous sentence if possible
         chunks = re.split(r'(?<=[.!?])\s+', text)
         
         final_sentences = []
         for chunk in chunks:
-            # 2. For Thai, sometimes long sentences are just separated by spaces.
-            # We enforce a split if a segment is very long (>200 chars) and has spaces.
-            if len(chunk) > 200:
-                # Attempt to split by spaces if they look like phrase breaks
-                # (This is a heuristic and not perfect, but better than massive blocks)
-                sub_parts = chunk.split(' ')
-                current_sent = ""
-                for part in sub_parts:
-                    if len(current_sent) + len(part) < 150:
-                        current_sent += part + " "
+            if not chunk.strip():
+                continue
+                
+            # 3. Handling Thai long paragraphs without punctuation
+            # If a chunk is very long (>150 chars), try to find logical break points
+            # Thai typically uses space for sentence boundaries, but also for emphasis.
+            # We look for spaces that are likely sentence boundaries.
+            
+            if len(chunk) > 150:
+                # Heuristic: Split by spaces that follow key conjunctions or standard gaps
+                # This Regex looks for a space followed by typical Thai starting words or just large gaps
+                # But to be safe for "Basic" engine, we just split by "  " (double space) if exists,
+                # or single space if it's really long.
+                
+                # Split by any space, then regroup
+                words = chunk.split(' ')
+                current_sent = []
+                current_len = 0
+                
+                for word in words:
+                    conjunctions = ['ดังนั้น', 'เพราะ', 'แต่', 'อย่างไรก็ตาม', 'นอกจากนี้', 'ทั้งนี้', 'โดย', 'เพื่อ']
+                    
+                    # If current sentence is long enough AND (we hit a conjunction OR just getting too long)
+                    if current_len > 80 and (word in conjunctions or current_len > 200):
+                        final_sentences.append(" ".join(current_sent))
+                        current_sent = [word]
+                        current_len = len(word)
                     else:
-                        final_sentences.append(current_sent.strip())
-                        current_sent = part + " "
+                        current_sent.append(word)
+                        current_len += len(word) + 1
+                
                 if current_sent:
-                    final_sentences.append(current_sent.strip())
+                    final_sentences.append(" ".join(current_sent))
             else:
                 final_sentences.append(chunk.strip())
                 
-        return [s for s in final_sentences if s]
+        return [s.strip() for s in final_sentences if s.strip()]
