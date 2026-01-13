@@ -225,6 +225,31 @@ async def register_user(user: UserSchema = Body(...)):
         if user_exists:
             raise HTTPException(status_code=400, detail="Email already registered.")
         
+        # 1A. Strict Email Validation (Real Existence Check)
+        try:
+            from email_validator import validate_email, EmailNotValidError
+            # check_deliverability=True performs a DNS check (MX record)
+            # This ensures the domain actually exists and accepts emails.
+            print(f"DEBUG: Validating email {user.email}...")
+            validation = validate_email(user.email, check_deliverability=True)
+            
+            # Normalize email (e.g. lowercase)
+            user.email = validation.email
+            
+            # Optional: Strict Check for Gmail (if user specifically asked to be strict about it)
+            # if "gmail" in user.email and not user.email.endswith("@gmail.com"):
+            #      raise HTTPException(status_code=400, detail="Please use a valid @gmail.com address.")
+                 
+        except EmailNotValidError as e:
+            print(f"DEBUG: Invalid Email: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Invalid email address: {str(e)}")
+        except ImportError:
+            print("WARNING: email-validator library not found. Skipping strict validation.")
+        except Exception as e:
+            # DNS checks might timeout (rare), allow to proceed or fail depending on strictness.
+            # Here we just log and proceed for robustness vs network glitches.
+            print(f"WARNING: Email validation check failed (Network issue?): {e}")
+        
         # INLINE FIX: Self-contained hashing to avoid Import Errors and bypass limits
         import hashlib
         

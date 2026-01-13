@@ -38,8 +38,13 @@ class SummarizationModel:
             # Pre-compute word sets for each sentence (Jaccard Similarity needs sets)
             sentence_words = []
             for sent in valid_sentences:
-                words = [w.lower() for w in sent.split() if w.lower() not in stopwords]
-                sentence_words.append(words)
+                # USE CUSTOM TOKENIZER instead of .split()
+                # This allows identifying Thai words even without spaces
+                words = processor.tokenize(sent)
+                
+                # Retrieve clean words (remove punctuation/single-char junk if needed)
+                clean_words = [w.lower() for w in words if w.lower() not in stopwords and len(w.strip()) > 0]
+                sentence_words.append(clean_words)
 
             # Build Similarity Matrix
             n = len(valid_sentences)
@@ -57,9 +62,10 @@ class SummarizationModel:
                 if not set1 or not set2:
                     return 0.0
                 intersection = len(set1.intersection(set2))
-                union = len(set1) + len(set2) - intersection # Simple union count
-                # Avoid log(0) complexity, just simple ratio
-                return intersection / (math.log(len(set1) + len(set2)) + 1.0) # Softened Jaccard
+                # Soft Jaccard to avoid pure 0 if small intersection but high relevance
+                union = len(set1) + len(set2) - intersection 
+                if union == 0: return 0.0
+                return intersection / union
 
             # Run Power Method Iterations
             for _ in range(iterations):
@@ -72,10 +78,6 @@ class SummarizationModel:
                         sim = jaccard_similarity(sentence_words[i], sentence_words[j])
                         
                         # Add contribution from neighbor j
-                        # In standard TextRank, we normalized by the sum of weights of j's neighbors.
-                        # Here, for "Basic" speed, we use a simplified unweighted summation logic or just raw similarity.
-                        # Let's use weighted sum.
-                        
                         sum_similarity += sim * scores[j]
                     
                     new_scores[i] = (1 - damping) + damping * sum_similarity

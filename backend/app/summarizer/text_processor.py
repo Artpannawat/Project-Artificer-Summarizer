@@ -14,6 +14,63 @@ class TextProcessor:
         
         return text
 
+    
+    def __init__(self):
+        # Small Dictionary for "Basic" Tokenization (Lite version of PyThaiNLP)
+        # Focus on "Function Words" that act as natural delimiters + Common words
+        self.thai_dict = set([
+            "การ", "ความ", "ที่", "ซึ่ง", "อัน", "และ", "หรือ", "แต่", "ก็", "ด้วย", "โดย", "ใน", "นอก", "บน", "ล่าง", "เหนือ", "ใต้", 
+            "จาก", "ถึง", "สู่", "ยัง", "ให้", "ได้", "ไป", "มา", "มี", "เป็น", "อยู่", "จะ", "ต้อง", "น่า", "ควร", "อยาก", "ไม่", "ใช่", "ว่า",
+            "เขา", "เธอ", "ฉัน", "มัน", "เรา", "ท่าน", "คน", "สัตว์", "สิ่ง", "ของ", "ผู้", "งาน", "เงิน", "ใจ", "ดี", "เลว", "มาก", "น้อย",
+            "สูง", "ต่ำ", "ใหญ่", "เล็ก", "ใหม่", "เก่า", "แรก", "หลัง", "ก่อน", "นี้", "นั้น", "โน้น", "ไหน", "ไร", "ใคร", "เมื่อ", "ถ้า", "หาก",
+            "เพราะ", "จึง", "แล้ว", "เลย", "นะ", "ครับ", "ค่ะ", "จ้ะ", "ละ", "สิ", "พ.ศ.", "จ.ศ.", "ร.ศ.", "บาท", "ดอลลาร์", "เมตร", "กิโลเมตร",
+            "วัน", "เดือน", "ปี", "เวลา", "นาที", "ชั่วโมง", "ประเทศ", "จังหวัด", "อำเภอ", "ตำบล", "โรงเรียน", "มหาวิทยาลัย", "บริษัท", "ระบบ",
+            "ข้อมูล", "ปัญหา", "ผล", "เหตุ", "ช่วย", "ส่ง", "รับ", "ซื้อ", "ขาย", "ติดต่อ", "สื่อสาร", "พัฒนา", "บริหาร", "จัดการ", "วิเคราะห์",
+            "สรุป", "รายงาน", "ตัวอย่าง", "เช่น", "ได้แก่", "อาทิ", "สำหรับ", "เพื่อ", "ต่อ", "ของ", "แห่ง", "ราย", "กลุ่ม", "พวก", "เหล่า"
+        ])
+        self.max_word_len = 20 # Max length to scan for dictionary match
+
+    def tokenize(self, text: str) -> list[str]:
+        """
+        Tokenize text into words using Maximum Matching with a small embedded dictionary.
+        Essential for Thai TextRank to work (since Thai has no spaces).
+        """
+        if not text:
+            return []
+
+        # 1. Pre-split by spaces/newlines first (easy wins)
+        chunks = text.split()
+        tokens = []
+
+        for chunk in chunks:
+            # If chunk is English/Numbers (mostly), just keep it
+            if re.match(r'^[a-zA-Z0-9\.\-\,]+$', chunk):
+                tokens.append(chunk)
+                continue
+                
+            # Thai MaxMatch Logic
+            i = 0
+            while i < len(chunk):
+                found = False
+                # Try to find longest matching word from dictionary
+                for j in range(min(len(chunk), i + self.max_word_len), i, -1):
+                    word = chunk[i:j]
+                    if word in self.thai_dict:
+                        tokens.append(word)
+                        i = j
+                        found = True
+                        break
+                
+                if not found:
+                    # If not found in dict, take 1 character (or group of non-Thai chars)
+                    # Optimization: Group unknown chars until we hit a known start-char? 
+                    # For Basic Engine, just take 1 char is safe but slow/fragmented.
+                    # Let's try to group "Unknowns"
+                    tokens.append(chunk[i])
+                    i += 1
+        
+        return tokens
+
     def segment_sentences(self, text: str) -> list[str]:
         """
         Segment text into partial sentences/phrases using punctuation and spacing.

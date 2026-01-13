@@ -138,6 +138,8 @@
   resize: vertical;
   min-height: 12rem;
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+  /* Fix overflow issues */
 }
 
 .text-input:focus {
@@ -145,6 +147,7 @@
   border-color: var(--primary-purple);
   box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
   background: var(--background-card);
+  box-sizing: border-box;
 }
 
 .text-input::placeholder {
