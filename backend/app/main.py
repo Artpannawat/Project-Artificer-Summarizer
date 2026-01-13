@@ -135,14 +135,24 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     last_error = None
     
     prompt = textwrap.dedent(f"""
-        You are a professional summarizer. Please summarize the following text into approximately {num_sentences} sentences.
-        
-        Requirements:
-        - Capture the main points accurately.
-        - Maintain the original language of the text (Thai or English).
-        - Output ONLY the summary text, no preamble.
-        
-        Text:
+        Role: You are a professional content summarizer specializing in the Thai language.
+        Task: Summarize the provided input text into exactly {num_sentences} key points.
+
+        Constraints & Formatting:
+        1. Language: Thai (Use natural, concise, and easy-to-understand Thai).
+        2. Quantity: The output must contain exactly {num_sentences} bullet points.
+        3. Format: Use a bulleted list (e.g., "- Point 1").
+        4. Length: Each bullet point should be 1 concise sentence (avoid overly long complex sentences).
+
+        Logic for Selection:
+        - If {num_sentences} = 1: Provide the single most important "Main Idea" (The core message).
+        - If {num_sentences} = 2:
+            1. The Main Problem/Topic.
+            2. The Solution/Conclusion.
+        - If {num_sentences} >= 3:
+            Create a narrative flow: Start with the context/problem -> proceed to key details/arguments -> end with the conclusion/impact.
+
+        Input Text:
         {text[:20000]}
     """)
 
