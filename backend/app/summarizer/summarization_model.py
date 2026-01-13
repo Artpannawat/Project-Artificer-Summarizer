@@ -92,13 +92,14 @@ class SummarizationModel:
             
             summary = [valid_sentences[i] for i in ranked_indices]
             
-            joined_summary = " ".join(summary)
+            # Format as bullet points
+            formatted_summary = "\n".join([f"- {sentence}" for sentence in summary])
             
             # If summary is too short, fallback to first few sentences
-            if len(joined_summary) < 100:
-                 return " ".join(valid_sentences[:num_sentences])
+            if len(formatted_summary) < 50: # Check length of formatted string
+                 return "\n".join([f"- {s}" for s in valid_sentences[:num_sentences]])
                  
-            return joined_summary
+            return formatted_summary
 
         except Exception as e:
             print(f"Basic Summarizer Error: {e}")
