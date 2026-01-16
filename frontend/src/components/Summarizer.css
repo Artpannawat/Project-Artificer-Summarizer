@@ -719,6 +719,15 @@
   border-color: #E2E8F0;
 }
 
+[data-theme='light'] .metric-label {
+  color: #64748B;
+  /* Darker Slate Gray for Light Mode */
+}
+
+[data-theme='light'] .metric-value {
+  /* Colors are already distinct, but ensure contrast */
+}
+
 .metric-card {
   display: flex;
   flex-direction: column;

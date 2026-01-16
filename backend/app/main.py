@@ -458,11 +458,20 @@ async def summarize_text(
         basic_task = run_in_threadpool(summarization_model.summarize, processed_text, num_sentences=request.num_sentences or 5)
         ai_task = run_in_threadpool(summarize_with_ai, request.text, num_sentences=request.num_sentences or 5)
         
-        basic_summary, ai_summary = await asyncio.gather(basic_task, ai_task)
+        basic_result, ai_summary = await asyncio.gather(basic_task, ai_task)
         
+        # Handle Dictionary Return from Basic Engine
+        if isinstance(basic_result, dict):
+            basic_summary_text = basic_result.get("summary", "")
+            basic_metrics = basic_result.get("metrics", None)
+        else:
+            basic_summary_text = str(basic_result)
+            basic_metrics = None
+
         result = {
             "original_text": request.text, 
-            "basic_summary": basic_summary,
+            "basic_summary": basic_summary_text,
+            "basic_metrics": basic_metrics,
             "ai_summary": ai_summary,
             "comparison_mode": True
         }
@@ -518,13 +527,22 @@ async def summarize_file(
         basic_task = run_in_threadpool(summarization_model.summarize, processed_text, num_sentences=num_sentences)
         ai_task = run_in_threadpool(summarize_with_ai, extracted_text, num_sentences=num_sentences)
         
-        basic_summary, ai_summary = await asyncio.gather(basic_task, ai_task)
+        basic_result, ai_summary = await asyncio.gather(basic_task, ai_task)
+
+        # Handle Dictionary Return from Basic Engine
+        if isinstance(basic_result, dict):
+            basic_summary_text = basic_result.get("summary", "")
+            basic_metrics = basic_result.get("metrics", None)
+        else:
+            basic_summary_text = str(basic_result)
+            basic_metrics = None
         
         result = {
             "filename": file.filename,
             "file_type": file.content_type,
             "extracted_text_length": len(extracted_text),
-            "basic_summary": basic_summary,
+            "basic_summary": basic_summary_text,
+            "basic_metrics": basic_metrics,
             "ai_summary": ai_summary,
             "comparison_mode": True
         }

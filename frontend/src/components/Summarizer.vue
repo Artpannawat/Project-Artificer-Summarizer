@@ -293,21 +293,7 @@
           <p>{{ aiSummary }}</p>
         </div>
         
-        <!-- Detailed Metrics Bar (Optional, can be toggled) -->
-        <div v-if="aiMetrics" class="metrics-details">
-           <div class="metric-item">
-             <span>Accuracy</span>
-             <div class="progress-bar"><div class="fill" :style="`width: ${aiMetrics.accuracy}%`"></div></div>
-           </div>
-           <div class="metric-item">
-             <span>Completeness</span>
-             <div class="progress-bar"><div class="fill" :style="`width: ${aiMetrics.completeness}%`"></div></div>
-           </div>
-           <div class="metric-item">
-             <span>Conciseness</span>
-             <div class="progress-bar"><div class="fill" :style="`width: ${aiMetrics.conciseness}%`"></div></div>
-           </div>
-        </div>
+
       </div>
 
       <div class="actions-row">
