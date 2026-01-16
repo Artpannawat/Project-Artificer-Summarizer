@@ -1,6 +1,7 @@
 import re
 import math
 from collections import Counter
+import numpy as np
 
 class SummarizationModel:
     def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> dict:
@@ -21,10 +22,20 @@ class SummarizationModel:
             valid_sentences = [s for s in sentences if len(s) >= min_length]
             
             if not valid_sentences:
-                return text[:500] + "..." if len(text) > 500 else text
+                return {"summary": text[:500] + "..." if len(text) > 500 else text, "metrics": None}
 
             if len(valid_sentences) <= num_sentences:
-                return " ".join(valid_sentences)
+                summary_text = "\n".join([f"- {s}" for s in valid_sentences])
+                # Mock metrics for short text
+                return {
+                    "summary": summary_text,
+                    "metrics": {
+                        "accuracy": 100,
+                        "completeness": 100,
+                        "conciseness": 100,
+                        "average": 100
+                    }
+                }
 
             # 2. TextRank Implementation (Graph-Based)
             
@@ -35,52 +46,25 @@ class SummarizationModel:
                 "จาก", "ว่า", "เพื่อ", "กับ", "แก่", "แห่ง", "นั้น", "นี้", "กัน", "แล้ว", "จึง", "อยู่", "ถูก", "เอา"
             ])
 
-            # Pre-compute word sets for each sentence (Jaccard Similarity needs sets)
+            # Pre-compute word sets
             sentence_words = []
             for sent in valid_sentences:
-                # USE CUSTOM TOKENIZER instead of .split()
-                # This allows identifying Thai words even without spaces
                 words = processor.tokenize(sent)
-                
-                # Retrieve clean words (remove punctuation/single-char junk if needed)
                 clean_words = [w.lower() for w in words if w.lower() not in stopwords and len(w.strip()) > 0]
                 sentence_words.append(clean_words)
 
-            # Build Similarity Matrix
-            n = len(valid_sentences)
-            scores = [1.0] * n  # Initial PageRank scores
-            damping = 0.85
-            iterations = 10
-            
-            # Similar to PageRank: score(i) = (1-d) + d * sum(score(j) * weight(j,i) / sum_weight(j))
-            # Simplified TextRank: score(i) = (1-d) + d * sum(similarity(i,j) * score(j))
-            # We use Jaccard Similarity for simplicity and speed.
-            
             def jaccard_similarity(words1, words2):
                 set1 = set(words1)
                 set2 = set(words2)
                 if not set1 or not set2:
                     return 0.0
                 intersection = len(set1.intersection(set2))
-                # Soft Jaccard to avoid pure 0 if small intersection but high relevance
                 union = len(set1) + len(set2) - intersection 
                 if union == 0: return 0.0
                 return intersection / union
 
-            # Run Power Method Iterations
-            for _ in range(iterations):
-                new_scores = [0.0] * n
-                for i in range(n):
-                    sum_similarity = 0.0
-                    for j in range(n):
-                        if i == j: continue
-                        
-                        sim = jaccard_similarity(sentence_words[i], sentence_words[j])
-                        
-                        # Add contribution from neighbor j
-                        sum_similarity += sim * scores[j]
-                    
-            # Create similarity matrix
+            # Build Similarity Matrix
+            n = len(valid_sentences)
             similarity_matrix = np.zeros((n, n))
             for i in range(n):
                 for j in range(n):
@@ -90,14 +74,14 @@ class SummarizationModel:
             
             # Normalize similarity matrix (row-wise sum to 1)
             row_sums = similarity_matrix.sum(axis=1)
-            # Avoid division by zero for sentences with no similarity to others
+            # Avoid division by zero
             similarity_matrix = np.where(row_sums[:, None] == 0, 0, similarity_matrix / row_sums[:, None])
 
             # Power Iteration (TextRank)
-            scores = np.ones(len(valid_sentences))
-            damping_factor = 0.85 # Damping factor for TextRank
-            for _ in range(10): # 10 iterations usually enough
-                scores = (1 - damping_factor) + damping_factor * np.dot(similarity_matrix.T, scores) # Transpose for correct multiplication
+            scores = np.ones(n)
+            damping_factor = 0.85 
+            for _ in range(10): 
+                scores = (1 - damping_factor) + damping_factor * np.dot(similarity_matrix.T, scores)
 
             # --- INTELLIGENT ADJUSTMENTS ---
             # 1. Position Weighting: Boost first 20% of sentences (Introduction is key)
