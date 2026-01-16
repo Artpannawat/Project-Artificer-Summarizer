@@ -573,6 +573,7 @@ export default {
       const result = historyItem.summary_result || {}
       
       this.basicSummary = result.basic_summary || ''
+      this.basicMetrics = result.basic_metrics || null
       
       // Handle AI Summary & Metrics Parsing for History
       let rawAi = result.ai_summary || ''
