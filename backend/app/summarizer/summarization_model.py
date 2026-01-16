@@ -87,51 +87,20 @@ class SummarizationModel:
             # Create pairs of (index, score)
             ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:num_sentences]
             
-            # 5. Reorder by original appearance (Coherence)
-            ranked_indices.sort()
-            summary_sentences = [valid_sentences[i] for i in ranked_indices]
+            # 5. Reorder logic
+            # User request: "Put main important topics first" (Score-based ordering)
+            # previously: ranked_indices.sort() (Original order)
             
-            # 6. Format with "Topic First" style (Keyphrase Extraction)
-            final_output = []
+            # We keep the list ordered by score (which is how ranked_indices was created effectively if we look at the selection logic)
+            # Wait, ranked_indices comes from sorting scores.
             
-            # Simple keyword extraction: Find the highest scoring word in the sentence
-            # We reuse the page-rank scores? No, that's for sentences.
-            # We use Term Frequency (TF) for simplicity here.
+            summary = [valid_sentences[i] for i in ranked_indices]
             
-            # Count word freqs globally in the text for weighting
-            all_words = []
-            for s in valid_sentences:
-                all_words.extend(processor.tokenize(s))
+            # Format as bullet points
+            formatted_summary = "\n".join([f"- {sentence}" for sentence in summary])
             
-            from collections import Counter
-            word_counts = Counter([w for w in all_words if w not in stopwords])
-            
-            for sentence in summary_sentences:
-                # Tokenize this sentence
-                words = processor.tokenize(sentence)
-                valid_words = [w for w in words if w not in stopwords]
-                
-                if valid_words:
-                    # Find the word with highest freq (or maybe least freq for specificity? No, freq = importance in TextRank philosophy)
-                    # Actually, usually "Rare in doc, common in sentence" is TF-IDF. 
-                    # But for a summary of a single doc, "Most frequent in doc" usually represents the main topic.
-                    # Let's pick the word that appears most in the DOCUMENT (Global Importance) that exists in this sentence.
-                    
-                    # Sort candidates by: 1. Length (longer is usually better topic than short words) 2. Global Frequency
-                    # giving weight to longer words to avoid generic verbs like "ทำ"
-                    best_keyword = max(valid_words, key=lambda w: (len(w) > 2, word_counts[w]), default=None)
-                    
-                    if best_keyword:
-                        final_output.append(f"- **{best_keyword}**: {sentence}")
-                    else:
-                        final_output.append(f"- {sentence}")
-                else:
-                    final_output.append(f"- {sentence}")
-            
-            formatted_summary = "\n".join(final_output)
-            
-            # Fallback if too short
-            if len(formatted_summary) < 50:
+            # If summary is too short, fallback to first few sentences
+            if len(formatted_summary) < 50: # Check length of formatted string
                  return "\n".join([f"- {s}" for s in valid_sentences[:num_sentences]])
                  
             return formatted_summary

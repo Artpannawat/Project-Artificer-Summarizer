@@ -138,19 +138,24 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
         Role: You are a professional content summarizer specializing in the Thai language.
         Task: Summarize the provided input text into exactly {num_sentences} key points.
 
-        Constraints & Formatting:
+        Constraint & Formatting:
         1. Language: Thai (Use natural, concise, and easy-to-understand Thai).
         2. Quantity: The output must contain exactly {num_sentences} bullet points.
         3. Format: Use a bulleted list (e.g., "- Point 1").
-        4. Length: Each bullet point should be 1 concise sentence (avoid overly long complex sentences).
+        4. Length: Each bullet point should be 1 concise sentence.
 
         Logic for Selection:
-        - If {num_sentences} = 1: Provide the single most important "Main Idea" (The core message).
-        - If {num_sentences} = 2:
-            1. The Main Problem/Topic.
-            2. The Solution/Conclusion.
-        - If {num_sentences} >= 3:
-            Create a narrative flow: Start with the context/problem -> proceed to key details/arguments -> end with the conclusion/impact.
+        - If {num_sentences} = 1: Provide the single most important "Main Idea".
+        - If {num_sentences} = 2: Problem/Topic -> Solution/Conclusion.
+        - If {num_sentences} >= 3: Context -> Details -> Conclusion.
+
+        **Quality Metrics Generation (Important):**
+        At the very end of your response, strictly append a JSON-like string evaluating your own summary based on the original text.
+        Format: [METRICS: {{"accuracy": XX, "completeness": XX, "conciseness": XX, "average": XX}}]
+        - Accuracy: How factual is it? (0-100)
+        - Completeness: Did strict key points get covered? (0-100)
+        - Conciseness: Is it easy to read? (0-100)
+        (Do not add any markdown around this specific line, just the raw bracketed string)
 
         Input Text:
         {text[:20000]}

@@ -1,5 +1,4 @@
 import re
-from .constants import THAI_DICT
 
 class TextProcessor:
     def clean_text(self, text: str) -> str:
@@ -16,46 +15,45 @@ class TextProcessor:
         return text
 
     
-    
     def __init__(self):
-        # Expanded Dictionary for "Basic" Tokenization (Lite version of PyThaiNLP)
-        # Includes common Function Words, Nouns, Verbs, Adjectives to cover ~80% of general text
-        self.thai_dict = THAI_DICT
-        
-        # Sort to handle sub-word issues (optional optimization but set lookup is O(1))
-        # Finding max length for optimization
-        self.max_word_len = max([len(w) for w in self.thai_dict]) + 5 # Dynamic max len
-        
-        # Regex for checking Thai characters range
-        self.thai_char_pattern = re.compile(r'[\u0E00-\u0E7F]')
+        # Small Dictionary for "Basic" Tokenization (Lite version of PyThaiNLP)
+        # Focus on "Function Words" that act as natural delimiters + Common words
+        self.thai_dict = set([
+            "การ", "ความ", "ที่", "ซึ่ง", "อัน", "และ", "หรือ", "แต่", "ก็", "ด้วย", "โดย", "ใน", "นอก", "บน", "ล่าง", "เหนือ", "ใต้", 
+            "จาก", "ถึง", "สู่", "ยัง", "ให้", "ได้", "ไป", "มา", "มี", "เป็น", "อยู่", "จะ", "ต้อง", "น่า", "ควร", "อยาก", "ไม่", "ใช่", "ว่า",
+            "เขา", "เธอ", "ฉัน", "มัน", "เรา", "ท่าน", "คน", "สัตว์", "สิ่ง", "ของ", "ผู้", "งาน", "เงิน", "ใจ", "ดี", "เลว", "มาก", "น้อย",
+            "สูง", "ต่ำ", "ใหญ่", "เล็ก", "ใหม่", "เก่า", "แรก", "หลัง", "ก่อน", "นี้", "นั้น", "โน้น", "ไหน", "ไร", "ใคร", "เมื่อ", "ถ้า", "หาก",
+            "เพราะ", "จึง", "แล้ว", "เลย", "นะ", "ครับ", "ค่ะ", "จ้ะ", "ละ", "สิ", "พ.ศ.", "จ.ศ.", "ร.ศ.", "บาท", "ดอลลาร์", "เมตร", "กิโลเมตร",
+            "วัน", "เดือน", "ปี", "เวลา", "นาที", "ชั่วโมง", "ประเทศ", "จังหวัด", "อำเภอ", "ตำบล", "โรงเรียน", "มหาวิทยาลัย", "บริษัท", "ระบบ",
+            "ข้อมูล", "ปัญหา", "ผล", "เหตุ", "ช่วย", "ส่ง", "รับ", "ซื้อ", "ขาย", "ติดต่อ", "สื่อสาร", "พัฒนา", "บริหาร", "จัดการ", "วิเคราะห์",
+            "สรุป", "รายงาน", "ตัวอย่าง", "เช่น", "ได้แก่", "อาทิ", "สำหรับ", "เพื่อ", "ต่อ", "ของ", "แห่ง", "ราย", "กลุ่ม", "พวก", "เหล่า"
+        ])
+        self.max_word_len = 20 # Max length to scan for dictionary match
 
     def tokenize(self, text: str) -> list[str]:
         """
-        Tokenize text into words using Maximum Matching with an Expanded Dictionary.
-        Includes logic to group unknown characters to reduce fragmentation.
+        Tokenize text into words using Maximum Matching with a small embedded dictionary.
+        Essential for Thai TextRank to work (since Thai has no spaces).
         """
         if not text:
             return []
 
-        # 1. Pre-split by spaces/newlines first
+        # 1. Pre-split by spaces/newlines first (easy wins)
         chunks = text.split()
         tokens = []
 
         for chunk in chunks:
             # If chunk is English/Numbers (mostly), just keep it
-            if not self.thai_char_pattern.search(chunk):
+            if re.match(r'^[a-zA-Z0-9\.\-\,]+$', chunk):
                 tokens.append(chunk)
                 continue
                 
-            # Thai MaxMatch Logic with Unknown Grouping
+            # Thai MaxMatch Logic
             i = 0
-            length = len(chunk)
-            
-            while i < length:
+            while i < len(chunk):
                 found = False
-                
-                # A. Try to find longest matching word
-                for j in range(min(length, i + self.max_word_len), i, -1):
+                # Try to find longest matching word from dictionary
+                for j in range(min(len(chunk), i + self.max_word_len), i, -1):
                     word = chunk[i:j]
                     if word in self.thai_dict:
                         tokens.append(word)
@@ -63,40 +61,13 @@ class TextProcessor:
                         found = True
                         break
                 
-                if found:
-                    continue
-                    
-                # B. If not found, it's an "Unknown"
-                # Instead of taking just 1 char, try to consume until we hit a "Known Start" or end
-                # But simple version: Just take 1 char if it's Thai vowel/tone mark to attach to previous?
-                # No, safer is to group consecutive unknowns.
-                
-                unknown_buf = chunk[i]
-                current_idx = i + 1
-                
-                while current_idx < length:
-                    # Check if the substring starting at current_idx matches any word in dict
-                    # This is lookahead "is this a start of a known word?"
-                    is_known_start = False
-                    
-                    # Quick check: scan ahead for max_word_len
-                    for k in range(min(length, current_idx + self.max_word_len), current_idx, -1):
-                        if chunk[current_idx:k] in self.thai_dict:
-                            is_known_start = True
-                            break
-                    
-                    if is_known_start:
-                        break
-                        
-                    # Also stop if we hit English/Numbers inside Thai string
-                    if not self.thai_char_pattern.match(chunk[current_idx]):
-                        break
-                        
-                    unknown_buf += chunk[current_idx]
-                    current_idx += 1
-                
-                tokens.append(unknown_buf)
-                i = current_idx
+                if not found:
+                    # If not found in dict, take 1 character (or group of non-Thai chars)
+                    # Optimization: Group unknown chars until we hit a known start-char? 
+                    # For Basic Engine, just take 1 char is safe but slow/fragmented.
+                    # Let's try to group "Unknowns"
+                    tokens.append(chunk[i])
+                    i += 1
         
         return tokens
 
