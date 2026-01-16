@@ -311,6 +311,7 @@ export default {
       numSentences: 3,
       basicSummary: '',
       aiSummary: '',
+      aiMetrics: null, // Store parsed metrics
       loading: false,
       error: '',
       backendUrl: import.meta.env.VITE_API_URL || ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://127.0.0.1:8000' : ''),
@@ -393,12 +394,31 @@ export default {
         
         // Handle new response format
         if (response.data.comparison_mode) {
-          this.basicSummary = response.data.basic_summary
-          this.aiSummary = response.data.ai_summary
+           this.basicSummary = response.data.basic_summary
+           
+           let rawAi = response.data.ai_summary
+           // Parse Metrics
+           const metricsMatch = rawAi.match(/\[METRICS:\s*(\{.*?\})\s*\]/);
+           if (metricsMatch && metricsMatch[1]) {
+              try {
+                  this.aiMetrics = JSON.parse(metricsMatch[1]);
+                  // Remove metrics tag from display text
+                  this.aiSummary = rawAi.replace(metricsMatch[0], '').trim();
+              } catch (e) {
+                  console.error("Failed to parse AI metrics", e);
+                  this.aiSummary = rawAi;
+                  this.aiMetrics = null;
+              }
+           } else {
+              this.aiSummary = rawAi;
+              this.aiMetrics = null;
+           }
+           
         } else {
-          // Fallback just in case
-          this.basicSummary = response.data.summary
-          this.aiSummary = ""
+           // Fallback just in case
+           this.basicSummary = response.data.summary
+           this.aiSummary = ""
+           this.aiMetrics = null
         }
       } catch (e) {
         // Handle Quota Exceeded (429) specifically
@@ -517,6 +537,7 @@ export default {
     clearResults() {
       this.basicSummary = ''
       this.aiSummary = ''
+      this.aiMetrics = null
       this.error = ''
       this.inputText = ''
       this.selectedFile = null
