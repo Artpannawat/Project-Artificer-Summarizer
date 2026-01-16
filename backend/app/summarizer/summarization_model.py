@@ -1,7 +1,6 @@
 import re
 import math
 from collections import Counter
-import numpy as np
 
 class SummarizationModel:
     def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> dict:
@@ -22,20 +21,10 @@ class SummarizationModel:
             valid_sentences = [s for s in sentences if len(s) >= min_length]
             
             if not valid_sentences:
-                return {"summary": text[:500] + "..." if len(text) > 500 else text, "metrics": None}
+                return text[:500] + "..." if len(text) > 500 else text
 
             if len(valid_sentences) <= num_sentences:
-                summary_text = "\n".join([f"- {s}" for s in valid_sentences])
-                # Mock metrics for short text
-                return {
-                    "summary": summary_text,
-                    "metrics": {
-                        "accuracy": 100,
-                        "completeness": 100,
-                        "conciseness": 100,
-                        "average": 100
-                    }
-                }
+                return " ".join(valid_sentences)
 
             # 2. TextRank Implementation (Graph-Based)
             
@@ -46,63 +35,66 @@ class SummarizationModel:
                 "จาก", "ว่า", "เพื่อ", "กับ", "แก่", "แห่ง", "นั้น", "นี้", "กัน", "แล้ว", "จึง", "อยู่", "ถูก", "เอา"
             ])
 
-            # Pre-compute word sets
+            # Pre-compute word sets for each sentence (Jaccard Similarity needs sets)
             sentence_words = []
             for sent in valid_sentences:
+                # USE CUSTOM TOKENIZER instead of .split()
+                # This allows identifying Thai words even without spaces
                 words = processor.tokenize(sent)
+                
+                # Retrieve clean words (remove punctuation/single-char junk if needed)
                 clean_words = [w.lower() for w in words if w.lower() not in stopwords and len(w.strip()) > 0]
                 sentence_words.append(clean_words)
 
+            # Build Similarity Matrix
+            n = len(valid_sentences)
+            scores = [1.0] * n  # Initial PageRank scores
+            damping = 0.85
+            iterations = 10
+            
+            # Similar to PageRank: score(i) = (1-d) + d * sum(score(j) * weight(j,i) / sum_weight(j))
+            # Simplified TextRank: score(i) = (1-d) + d * sum(similarity(i,j) * score(j))
+            # We use Jaccard Similarity for simplicity and speed.
+            
             def jaccard_similarity(words1, words2):
                 set1 = set(words1)
                 set2 = set(words2)
                 if not set1 or not set2:
                     return 0.0
                 intersection = len(set1.intersection(set2))
+                # Soft Jaccard to avoid pure 0 if small intersection but high relevance
                 union = len(set1) + len(set2) - intersection 
                 if union == 0: return 0.0
                 return intersection / union
 
-            # Build Similarity Matrix
-            n = len(valid_sentences)
-            similarity_matrix = np.zeros((n, n))
-            for i in range(n):
-                for j in range(n):
-                    if i == j:
-                        continue
-                    similarity_matrix[i][j] = jaccard_similarity(sentence_words[i], sentence_words[j])
+            # Run Power Method Iterations
+            for _ in range(iterations):
+                new_scores = [0.0] * n
+                for i in range(n):
+                    sum_similarity = 0.0
+                    for j in range(n):
+                        if i == j: continue
+                        
+                        sim = jaccard_similarity(sentence_words[i], sentence_words[j])
+                        
+                        # Add contribution from neighbor j
+                        sum_similarity += sim * scores[j]
+                    
+                    new_scores[i] = (1 - damping) + damping * sum_similarity
+                scores = new_scores
+
+            # 4. Select Top Sentences
+            # Create pairs of (index, score)
+            ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:num_sentences]
             
-            # Normalize similarity matrix (row-wise sum to 1)
-            row_sums = similarity_matrix.sum(axis=1)
-            # Avoid division by zero
-            similarity_matrix = np.where(row_sums[:, None] == 0, 0, similarity_matrix / row_sums[:, None])
-
-            # Power Iteration (TextRank)
-            scores = np.ones(n)
-            damping_factor = 0.85 
-            for _ in range(10): 
-                scores = (1 - damping_factor) + damping_factor * np.dot(similarity_matrix.T, scores)
-
-            # --- INTELLIGENT ADJUSTMENTS ---
-            # 1. Position Weighting: Boost first 20% of sentences (Introduction is key)
-            # This makes the model "smarter" by knowing that news/articles usually start with the main point.
-            num_early = max(1, int(len(valid_sentences) * 0.2))
-            for i in range(num_early):
-                scores[i] *= 1.3  # 30% Boost for early sentences
-
-            # 2. Length Penalty: Penalize very short sentences (often fragments/headers)
-            for i, sent in enumerate(valid_sentences):
-                if len(sent) < 40:
-                    scores[i] *= 0.5
-
-            ranked_indices = np.argsort(scores)[::-1]
+            # 5. Reorder logic
+            # User request: "Put main important topics first" (Score-based ordering)
+            # previously: ranked_indices.sort() (Original order)
             
-            # Select top N sentences, but sort them by appearance order for flow
-            if num_sentences > len(valid_sentences):
-                num_sentences = len(valid_sentences)
+            # We keep the list ordered by score (which is how ranked_indices was created effectively if we look at the selection logic)
+            # Wait, ranked_indices comes from sorting scores.
             
-            selected_indices = sorted(ranked_indices[:num_sentences])
-            summary = [valid_sentences[i] for i in selected_indices]
+            summary = [valid_sentences[i] for i in ranked_indices]
             
             # Format as bullet points
             formatted_summary = "\n".join([f"- {sentence}" for sentence in summary])
@@ -114,8 +106,8 @@ class SummarizationModel:
             summary_len = len(formatted_summary)
             conciseness = max(0, min(100, int((1 - (summary_len / original_len)) * 100))) if original_len > 0 else 0
             
-            # 2. Completeness (Coverage): % of Top 12 keywords present in summary
-            # (tuned from 20 down to 12 to be more realistic for short summaries)
+            # 2. Completeness (Coverage): % of Top 20 keywords present in summary
+            # Reuse 'sentence_words' logic or just re-tokenize cleaned text
             all_words = []
             for s in valid_sentences:
                 all_words.extend(processor.tokenize(s))
@@ -123,18 +115,10 @@ class SummarizationModel:
             # Get keywords (exclude stopwords)
             keywords = [w.lower() for w in all_words if w.lower() not in stopwords and len(w.strip()) > 1]
             if keywords:
-                 # Check against Top 12 most frequent words
-                 target_keywords_count = 12
-                 most_common = [w for w, count in Counter(keywords).most_common(target_keywords_count)]
+                 most_common = [w for w, count in Counter(keywords).most_common(20)]
                  summary_tokens = set(processor.tokenize(formatted_summary))
-                 
-                 # Count hits
                  hit_count = sum(1 for w in most_common if w in summary_tokens)
-                 
-                 # Boost score: If we hit >50% of top keywords, scaling up towards 90-100%
-                 raw_completeness = (hit_count / len(most_common))
-                 # Curve: x^0.5 to boost lower scores (e.g. 0.4 -> 0.63)
-                 completeness = int((raw_completeness ** 0.5) * 100)
+                 completeness = int((hit_count / len(most_common)) * 100)
             else:
                  completeness = 0
             
