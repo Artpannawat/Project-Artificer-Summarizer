@@ -3,7 +3,7 @@ import math
 from collections import Counter
 
 class SummarizationModel:
-    def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> str:
+    def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> dict:
         if not text:
             return ""
 
@@ -99,13 +99,50 @@ class SummarizationModel:
             # Format as bullet points
             formatted_summary = "\n".join([f"- {sentence}" for sentence in summary])
             
-            # If summary is too short, fallback to first few sentences
-            if len(formatted_summary) < 50: # Check length of formatted string
-                 return "\n".join([f"- {s}" for s in valid_sentences[:num_sentences]])
+            # --- Metrics Calculation ---
+            
+            # 1. Conciseness: (1 - summary_len / original_len) * 100
+            original_len = len(text)
+            summary_len = len(formatted_summary)
+            conciseness = max(0, min(100, int((1 - (summary_len / original_len)) * 100))) if original_len > 0 else 0
+            
+            # 2. Completeness (Coverage): % of Top 20 keywords present in summary
+            # Reuse 'sentence_words' logic or just re-tokenize cleaned text
+            all_words = []
+            for s in valid_sentences:
+                all_words.extend(processor.tokenize(s))
+            
+            # Get keywords (exclude stopwords)
+            keywords = [w.lower() for w in all_words if w.lower() not in stopwords and len(w.strip()) > 1]
+            if keywords:
+                 most_common = [w for w, count in Counter(keywords).most_common(20)]
+                 summary_tokens = set(processor.tokenize(formatted_summary))
+                 hit_count = sum(1 for w in most_common if w in summary_tokens)
+                 completeness = int((hit_count / len(most_common)) * 100)
+            else:
+                 completeness = 0
+            
+            # 3. Accuracy: Extractive is always 100% accurate regarding the source text.
+            accuracy = 100
+            
+            # Average
+            avg_score = int((accuracy + completeness + conciseness) / 3)
+            
+            metrics = {
+                "accuracy": accuracy,
+                "completeness": completeness,
+                "conciseness": conciseness,
+                "average": avg_score
+            }
+            
+            # If summary is too short, fallback
+            if len(formatted_summary) < 50:
+                 fallback_text = "\n".join([f"- {s}" for s in valid_sentences[:num_sentences]])
+                 return {"summary": fallback_text, "metrics": metrics}
                  
-            return formatted_summary
+            return {"summary": formatted_summary, "metrics": metrics}
 
         except Exception as e:
             print(f"Basic Summarizer Error: {e}")
             # Fallback
-            return text[:500] + "..."
+            return {"summary": text[:500] + "...", "metrics": None}

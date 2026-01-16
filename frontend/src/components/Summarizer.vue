@@ -216,6 +216,25 @@
             </svg>
           </button>
         </div>
+        
+        <!-- Metrics Dashboard for Basic Engine -->
+        <div v-if="basicMetrics" class="metrics-dashboard">
+          <div class="metric-card">
+             <span class="metric-label">Accuracy</span>
+             <span class="metric-value text-green">{{ basicMetrics.accuracy }}%</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-card">
+             <span class="metric-label">Completeness</span>
+             <span class="metric-value text-blue">{{ basicMetrics.completeness }}%</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-card">
+             <span class="metric-label">Avg. Score</span>
+             <span class="metric-value text-purple">{{ basicMetrics.average }}%</span>
+          </div>
+        </div>
+
         <div class="summary-content">
           <p>{{ basicSummary }}</p>
         </div>
@@ -314,6 +333,7 @@ export default {
       inputText: '',
       numSentences: 3,
       basicSummary: '',
+      basicMetrics: null,
       aiSummary: '',
       aiMetrics: null, // Store parsed metrics
       loading: false,
@@ -399,6 +419,7 @@ export default {
         // Handle new response format
         if (response.data.comparison_mode) {
            this.basicSummary = response.data.basic_summary
+           this.basicMetrics = response.data.basic_metrics || null
            
            let rawAi = response.data.ai_summary
            // Parse Metrics
@@ -540,6 +561,7 @@ export default {
     
     clearResults() {
       this.basicSummary = ''
+      this.basicMetrics = null
       this.aiSummary = ''
       this.aiMetrics = null
       this.error = ''
