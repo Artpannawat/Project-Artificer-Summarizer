@@ -16,7 +16,7 @@ import os
 import warnings
 # Suppress FutureWarning from google.generativeai
 warnings.filterwarnings("ignore", category=FutureWarning)
-import google.generativeai as genai
+
 STARTUP_ERRORS = []
 
 HAS_GENAI = False
@@ -195,8 +195,74 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     return f"AI Service Error: All models failed. System busy or quota exceeded. Last error: {str(last_error)}"
 
 
+class EvaluationRequest(BaseModel):
+    original_text: str
+    summary_text: str
 
-API_VERSION = "v1.7-route-busting"
+async def evaluate_quality_with_ai(original: str, summary: str) -> dict:
+    if not gemini_model or not HAS_GENAI:
+        return {"error": "AI Service Offline"}
+
+    prompt = textwrap.dedent(f"""
+        บทบาท: คุณคือผู้เชี่ยวชาญด้านการวิเคราะห์ภาษาและการประเมินคุณภาพการสรุปความ
+
+        งานของคุณ: เปรียบเทียบ "บทความต้นฉบับ" กับ "บทสรุปที่สร้างขึ้น" และประเมินความถูกต้องแม่นยำออกมาเป็นตัวเลขเปอร์เซ็นต์
+
+        สิ่งที่คุณต้องตอบ (Output) เป็น JSON Format เท่านั้น:
+        {{
+            "semantic_score": (0-100),
+            "textual_difference": (0-100),
+            "analysis": "คำอธิบายสั้นๆ..."
+        }}
+
+        คำอธิบายตัววัด:
+        1. คะแนนความเหมือนของใจความสำคัญ (Semantic Similarity Score):
+        - วัดว่าบทสรุปเก็บ "ใจความสำคัญและประเด็นหลัก" ได้ครบถ้วนหรือไม่ (100% = ครบถ้วนสมบูรณ์)
+        
+        2. อัตราความคลาดเคลื่อนของข้อความ (Textual Difference / Error Rate):
+        - วัดความแตกต่างของรูปประโยค (ยิ่งสูงแปลว่ามีการเรียบเรียงใหม่โดยใช้คำตัวเองมาก ซึ่งดีสำหรับการสรุปแบบ Abstractive)
+        
+        3. บทวิเคราะห์สั้นๆ: 
+        - อธิบายเหตุผล คะแนน และจุดที่ตกหล่น
+
+        ---
+        [ข้อมูลนำเข้า]
+
+        บทความต้นฉบับ:
+        "{original[:15000]}"
+
+        บทสรุปที่สร้างขึ้น:
+        "{summary[:5000]}"
+    """)
+
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        model = genai.GenerativeModel('gemini-2.0-flash') # Fast model for evaluation
+        response = await run_in_threadpool(model.generate_content, prompt)
+        
+        # Simple parsing logic (JSON mode is better but text parsing is robust for now)
+        text_res = response.text.strip()
+        # Ensure we get clean JSON
+        import json
+        
+        # Try to find JSON block
+        if "```json" in text_res:
+            text_res = text_res.split("```json")[1].split("```")[0].strip()
+        elif "{" in text_res:
+            start = text_res.find("{")
+            end = text_res.rfind("}") + 1
+            text_res = text_res[start:end]
+            
+        return json.loads(text_res)
+    except Exception as e:
+        print(f"DEBUG: Evaluation Error: {e}")
+        return {"error": str(e), "raw_response": text_res if 'text_res' in locals() else "No response"}
+
+@app.post("/evaluate")
+async def evaluate_summary(request: EvaluationRequest):
+    return await evaluate_quality_with_ai(request.original_text, request.summary_text)
+
+API_VERSION = "v1.8-evaluator"
 
 @app.get("/health")
 async def health_check():

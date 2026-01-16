@@ -151,7 +151,7 @@
             max="10" 
             class="number-input"
           />
-          <span class="input-unit">ประโยค</span>
+          <span class="input-unit">หัวข้อ</span>
         </div>
       </div>
       
