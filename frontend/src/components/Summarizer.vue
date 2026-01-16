@@ -253,19 +253,21 @@
           </button>
         </div>
 
-        <!-- Metrics Display (Moved to separate row) -->
-        <div v-if="aiMetrics" class="metrics-row-container">
-          <div class="metrics-badge" :title="'Accuracy: ' + aiMetrics.accuracy + '%, Completeness: ' + aiMetrics.completeness + '%'">
-             <div class="metric-score">
-                <span class="score-label">Quality Score</span>
-                <span class="score-value">{{ aiMetrics.average }}%</span>
-             </div>
-             <div class="score-ring" :style="`--score: ${aiMetrics.average}`">
-               <svg viewBox="0 0 36 36">
-                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#444" stroke-width="4" />
-                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary-purple)" stroke-width="4" :stroke-dasharray="`${aiMetrics.average}, 100`" />
-               </svg>
-             </div>
+        <!-- Metrics Dashboard (Premium UI) -->
+        <div v-if="aiMetrics" class="metrics-dashboard">
+          <div class="metric-card">
+             <span class="metric-label">Accuracy</span>
+             <span class="metric-value text-green">{{ aiMetrics.accuracy }}%</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-card">
+             <span class="metric-label">Completeness</span>
+             <span class="metric-value text-blue">{{ aiMetrics.completeness }}%</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-card">
+             <span class="metric-label">Avg. Score</span>
+             <span class="metric-value text-purple">{{ aiMetrics.average }}%</span>
           </div>
         </div>
         <div class="summary-content">
@@ -560,14 +562,29 @@ export default {
       this.inputText = historyItem.original_text || ''
 
       // Restore results from the nested summary_result object
-      // Note: Backend saves the result object as 'summary_result' in top level history item,
-      // but inside that object it matches the API response structure.
       const result = historyItem.summary_result || {}
       
       this.basicSummary = result.basic_summary || ''
-      this.aiSummary = result.ai_summary || ''
       
-      // If it was a file, we might want to indicate that, but for now showing text is fine.
+      // Handle AI Summary & Metrics Parsing for History
+      let rawAi = result.ai_summary || ''
+      
+      const metricsMatch = rawAi.match(/\[METRICS:\s*(\{.*?\})\s*\]/);
+      if (metricsMatch && metricsMatch[1]) {
+          try {
+              this.aiMetrics = JSON.parse(metricsMatch[1]);
+              // Remove metrics tag from display text
+              this.aiSummary = rawAi.replace(metricsMatch[0], '').trim();
+          } catch (e) {
+              console.error("Failed to parse AI metrics from history", e);
+              this.aiSummary = rawAi;
+              this.aiMetrics = null;
+          }
+      } else {
+          this.aiSummary = rawAi;
+          this.aiMetrics = null;
+      }
+      
       if (result.filename) {
         console.log("Loaded history from file:", result.filename)
       }
