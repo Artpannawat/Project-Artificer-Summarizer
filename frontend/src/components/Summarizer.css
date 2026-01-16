@@ -702,30 +702,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(15, 23, 42, 0.6);
-  /* Darker, sleek background */
-  border: 1px solid var(--border-light);
+  /* Light Mode Default */
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
   border-radius: 16px;
   padding: 1.5rem 2rem;
   margin-bottom: 1.5rem;
   margin-top: 0.5rem;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark Mode Override */
+[data-theme='dark'] .metrics-dashboard {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--border-light);
   backdrop-filter: blur(10px);
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme='light'] .metrics-dashboard {
-  background: #F8FAFC;
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
-  border-color: #E2E8F0;
-}
-
-[data-theme='light'] .metric-label {
-  color: #64748B;
-  /* Darker Slate Gray for Light Mode */
-}
-
-[data-theme='light'] .metric-value {
-  /* Colors are already distinct, but ensure contrast */
 }
 
 .metric-card {
@@ -738,10 +730,16 @@
 
 .metric-label {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: #64748B;
+  /* Light Mode Text */
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+[data-theme='dark'] .metric-label {
+  color: var(--text-secondary);
+  /* Dark Mode Text */
 }
 
 .metric-value {
@@ -750,8 +748,16 @@
   line-height: 1;
   font-family: 'Inter', sans-serif;
   /* Ensure clear standard font for numbers */
+  color: #1E293B;
+  /* Light Mode Text Dark Blue/Black */
 }
 
+[data-theme='dark'] .metric-value {
+  color: #F8FAFC;
+  /* Dark Mode Text White */
+}
+
+/* Custom Colors for Values */
 .text-green {
   color: #10B981;
 }

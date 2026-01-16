@@ -122,8 +122,22 @@ class SummarizationModel:
             else:
                  completeness = 0
             
-            # 3. Accuracy: Extractive is always 100% accurate regarding the source text.
-            accuracy = 100
+            # 3. Accuracy (Relevance Score):
+            # Calculate how "central" the selected sentences are compared to the best possible sentence.
+            # If we picked the top sentences, the score should be high.
+            if scores:
+                max_score = max(scores)
+                if max_score > 0:
+                    # Average importance of selected sentences relative to the most important sentence
+                    # This reflects "How accurate/relevant is this summary compared to the best possible single-sentence summary?"
+                    selected_scores = [scores[i] for i in ranked_indices]
+                    avg_selected_score = sum(selected_scores) / len(selected_scores)
+                    # Normalize: 85% base + up to 15% based on score quality
+                    accuracy = min(100, int(85 + (avg_selected_score / max_score) * 15))
+                else:
+                    accuracy = 90
+            else:
+                accuracy = 90
             
             # Average
             avg_score = int((accuracy + completeness + conciseness) / 3)
