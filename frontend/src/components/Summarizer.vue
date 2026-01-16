@@ -237,20 +237,6 @@
             <span class="premium-badge">Recommended</span>
           </div>
           
-          <!-- Metrics Display (if available) -->
-          <div v-if="aiMetrics" class="metrics-badge" :title="'Accuracy: ' + aiMetrics.accuracy + '%, Completeness: ' + aiMetrics.completeness + '%'">
-             <div class="metric-score">
-                <span class="score-label">Quality Score</span>
-                <span class="score-value">{{ aiMetrics.average }}%</span>
-             </div>
-             <div class="score-ring" :style="`--score: ${aiMetrics.average}`">
-               <svg viewBox="0 0 36 36">
-                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#444" stroke-width="4" />
-                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary-purple)" stroke-width="4" :stroke-dasharray="`${aiMetrics.average}, 100`" />
-               </svg>
-             </div>
-          </div>
-
           <button 
             @click="copyToClipboard(aiSummary, 'ai')" 
             class="copy-button-icon" 
@@ -265,6 +251,22 @@
               <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+        </div>
+
+        <!-- Metrics Display (Moved to separate row) -->
+        <div v-if="aiMetrics" class="metrics-row-container">
+          <div class="metrics-badge" :title="'Accuracy: ' + aiMetrics.accuracy + '%, Completeness: ' + aiMetrics.completeness + '%'">
+             <div class="metric-score">
+                <span class="score-label">Quality Score</span>
+                <span class="score-value">{{ aiMetrics.average }}%</span>
+             </div>
+             <div class="score-ring" :style="`--score: ${aiMetrics.average}`">
+               <svg viewBox="0 0 36 36">
+                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#444" stroke-width="4" />
+                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary-purple)" stroke-width="4" :stroke-dasharray="`${aiMetrics.average}, 100`" />
+               </svg>
+             </div>
+          </div>
         </div>
         <div class="summary-content">
           <p>{{ aiSummary }}</p>

@@ -696,3 +696,27 @@
     font-size: 0.8rem;
   }
 }
+
+/* New Metrics Row Layout */
+.metrics-row-container {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px dashed var(--border-light);
+  animation: fadeIn 0.5s ease;
+}
+
+.metrics-row-container .metrics-badge {
+  display: flex !important;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 0 !important;
+}
+
+/* Override existing responsive behavior if needed */
+@media (max-width: 600px) {
+  .metrics-row-container .metrics-badge {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
