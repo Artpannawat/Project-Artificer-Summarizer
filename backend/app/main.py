@@ -141,6 +141,10 @@ class TextRequest(BaseModel):
     num_sentences: int | None = 5
 
 def summarize_with_ai(text: str, num_sentences: int) -> str:
+    # Debug: Check which Key is being used
+    masked_key = GOOGLE_API_KEY[:10] + "..." if GOOGLE_API_KEY else "None"
+    print(f"DEBUG: Active API Key: {masked_key}")
+
     if not gemini_model or not HAS_GENAI:
         return f"AI system is offline. Startup Errors: {STARTUP_ERRORS}"
     
