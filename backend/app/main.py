@@ -143,16 +143,12 @@ class TextRequest(BaseModel):
 def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 
-    if not gemini_model or not HAS_GENAI:
-        return f"AI system is offline. Startup Errors: {STARTUP_ERRORS}"
-    
-    # Strategies: Multi-Model Fallback Priority
+    # Strategies: Multi-Model Fallback Priority (Based on actual availability)
     strategies = [
-        {'model': 'gemini-1.5-flash-002', 'desc': 'Gemini 1.5 Flash-002 (Latest Stable)'},
-        {'model': 'gemini-1.5-flash-001', 'desc': 'Gemini 1.5 Flash-001 (Legacy Stable)'},
-        {'model': 'gemini-1.5-flash', 'desc': 'Gemini 1.5 Flash (Alias)'},
-        {'model': 'gemini-1.5-pro', 'desc': 'Gemini 1.5 Pro (High Intelligence)'},
-        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Fast)'},
+        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Standard)'},
+        {'model': 'gemini-2.0-flash-lite', 'desc': 'Gemini 2.0 Flash Lite (Efficient)'},
+        {'model': 'gemini-2.5-flash', 'desc': 'Gemini 2.5 Flash (Newest)'},
+        {'model': 'gemini-1.5-flash-latest', 'desc': 'Gemini 1.5 Flash Latest (Fallback)'},
     ]
 
     last_error = None
