@@ -94,13 +94,14 @@ class TextProcessor:
                 if chunk.strip():
                     raw_sentences.append(chunk.strip())
         
-        # 4. Repair broken sentences (e.g. ending with conjunctions) & Merge short fragments
+        # 4. Repair broken sentences (e.g. ending with conjunctions/prefixes) & Merge short fragments
         final_sentences = []
-        bad_endings = ('แต่', 'และ', 'หรือ', 'ก็', 'คือ', 'ว่า', 'ซึ่ง', 'ที่', 'เพื่อ', 'โดย')
+        # Added 'ความ', 'การ', 'ของ', 'ใน' to prevent cutting off at common prefixes/prepositions
+        bad_endings = ('แต่', 'และ', 'หรือ', 'ก็', 'คือ', 'ว่า', 'ซึ่ง', 'ที่', 'เพื่อ', 'โดย', 'กับ', 'ความ', 'การ', 'ของ', 'ใน', 'ไม่')
         
         buffer = ""
-        # Heuristic: Minimum length for a "complete" Thai sentence/thought
-        MIN_SENTENCE_LENGTH = 40 
+        # Heuristic: Minimum length for a "complete" Thai sentence/thought -> Increased to 60 to force longer phrases
+        MIN_SENTENCE_LENGTH = 60 
         
         for s in raw_sentences:
             s = s.strip()

@@ -193,41 +193,51 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
             time.sleep(retry_delay)
             retry_delay *= 2  # 1s, 2s, 4s...
             
-        try:
-            print(f"DEBUG: Trying {strategy['desc']} (Model: {model_name})...")
-            
-            # Configure with the single available key
-            genai.configure(api_key=GOOGLE_API_KEY)
-            
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            
-            if response.text:
-                print(f"DEBUG: Success with {model_name}")
-                return response.text.strip()
-            
-        except Exception as e:
-            # Log error and continue to next model
-            # If 429 (Quota), we try to parse the recommended wait time
-            if "429" in str(e) or "quota" in str(e).lower():
-                import time
-                wait_time = 30 # Default safety wait
-                try:
-                    # Extracts "retry in 25.220225223s"
-                    if "retry in" in str(e):
-                        parts = str(e).split("retry in")
-                        seconds_part = parts[1].strip().split("s")[0]
-                        wait_time = float(seconds_part) + 1.0 # Add 1s buffer
-                except:
-                    pass
+        # Nested Retry Logic for 429 Errors (Try same model again after wait)
+        max_retries_per_model = 2
+        for attempt in range(max_retries_per_model):
+            try:
+                print(f"DEBUG: Trying {strategy['desc']} (Model: {model_name}) [Attempt {attempt+1}]...")
                 
-                print(f"DEBUG: Rate Limit Hit. Waiting {wait_time:.2f}s before fallback...")
-                time.sleep(wait_time)
-                # After waiting, we continue to the next model logic (which will run immediately)
-                continue 
-            
-            # Other errors: continue to next model
-            continue 
+                # Configure with the single available key
+                genai.configure(api_key=GOOGLE_API_KEY)
+                
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                
+                if response and response.text:
+                    print(f"DEBUG: Success with {model_name}")
+                    return response.text.strip()
+                else:
+                    # Case where response exists but text is blocked/empty (Safety Filters)
+                    raise ValueError("Response blocked by Safety Filters or Empty.")
+                
+            except Exception as e:
+                # Log error
+                print(f"DEBUG: Failed with {model_name}: {e}")
+                last_error = e
+                
+                # If 429 (Quota), we try to parse the recommended wait time AND RETRY
+                if "429" in str(e) or "quota" in str(e).lower():
+                    import time
+                    wait_time = 10 # Default fallback
+                    if "retry in" in str(e):
+                        try:
+                            parts = str(e).split("retry in")
+                            seconds_part = parts[1].strip().split("s")[0]
+                            wait_time = float(seconds_part) + 1.5 # Add buffer
+                        except:
+                            pass
+                    
+                    print(f"DEBUG: Rate Limit Hit. Waiting {wait_time:.2f}s before retrying...")
+                    time.sleep(wait_time)
+                    
+                    # If we have attempts left, continue loop to retry THIS model
+                    if attempt < max_retries_per_model - 1:
+                         continue
+                
+                # For non-429 errors or if retries exhausted, break inner loop to try next model
+                break 
     
     # If all failed
     return f"AI Service Error: All models failed. System busy or quota exceeded. Last error: {str(last_error)}"
