@@ -193,7 +193,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
             retry_delay *= 2 
             
         # Nested Retry Logic for 429 Errors
-        max_retries_per_model = 2
+        max_retries_per_model = 5
         for attempt in range(max_retries_per_model):
             try:
                 print(f"DEBUG: Trying {strategy['desc']} (Model: {model_name}) [Attempt {attempt+1}]...")
@@ -214,17 +214,27 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 
                 # RESTORED: Smart Wait for 429 (Critical for Free Key)
                 if "429" in str(e) or "quota" in str(e).lower():
-                    # User Request: Cut time out! No waiting!
-                    print(f"DEBUG: Rate Limit Hit. Retrying immediately (No Wait Mode)...")
-                    # import time
-                    # wait_time = 5 
-                    # ... parsing logic skipped ...
-                    # time.sleep(wait_time) 
+                    import time
+                    wait_time = 10 # Default fallback
+                    if "retry in" in str(e):
+                        try:
+                            parts = str(e).split("retry in")
+                            seconds_part = parts[1].strip().split("s")[0]
+                            wait_time = float(seconds_part) + 5.0 # Add LARGE buffer
+                        except:
+                            pass
+                    
+                    print(f"DEBUG: Rate Limit Hit. Waiting {wait_time:.2f}s...")
+                    time.sleep(wait_time)
                     
                     if attempt < max_retries_per_model - 1:
                          continue
                 
-                break 
+                break
+        
+        # Exponential Backoff for next model
+        if i < len(strategies) - 1:
+             retry_delay *= 2 
     
     # If all failed
     return f"AI Service Error: All models failed. System busy or quota exceeded. Last error: {str(last_error)}"
