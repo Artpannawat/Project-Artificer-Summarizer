@@ -154,19 +154,27 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     last_error = None
     
     prompt = textwrap.dedent(f"""
-        Role: You are a professional content summarizer specializing in the Thai language.
-        Task: Summarize the provided input text into exactly {num_sentences} key points.
+        Role: You are an expert Document Analyst and Content Summarizer using Thai language.
+        Task: Analyze the raw text extracted from a PDF/DOCX document, clean the noise, and provide a high-quality summary.
 
-        Constraint & Formatting:
-        1. Language: Thai (Use natural, concise, and easy-to-understand Thai).
-        2. Quantity: The output must contain exactly {num_sentences} bullet points.
-        3. Format: Use a bulleted list (e.g., "- Point 1").
-        4. Length: Each bullet point should be 1 concise sentence.
+        Input Context:
+        The input text may contain "extraction artifacts" such as:
+        - Script/Storyboard metadata (e.g., "Scene:", "Voice Over:", "Cut to:", "Camera Angle").
+        - Broken sentences or weird line breaks (typical from PDF extraction).
+        - Headers, footers, or page numbers.
 
-        Logic for Selection:
-        - If {num_sentences} = 1: Provide the single most important "Main Idea".
-        - If {num_sentences} = 2: Problem/Topic -> Solution/Conclusion.
-        - If {num_sentences} >= 3: Context -> Details -> Conclusion.
+        Instructions:
+        1. **Filter Noise:** Ignore technical instructions, stage directions, scene numbers, or list of actors UNLESS they are crucial to understanding the story/context.
+        2. **Reconstruct:** Mentally join broken lines or split sentences to form coherent thoughts before summarizing.
+        3. **Summarize:** Extract the *core message* and *intent* of the document.
+            - If it's a story/script: Summarize the plot and key message.
+            - If it's an academic/formal doc: Summarize the key findings.
+        4. **Format:** Output exactly {num_sentences} bullet points in Thai.
+
+        Output Requirement:
+        - Language: Natural, professional Thai.
+        - Style: Concise, clear, and easy to read.
+        - Do NOT output the raw cleaned text, only the final summary.
 
         **Quality Metrics Generation (Important):**
         At the very end of your response, strictly append a JSON-like string evaluating your own summary based on the original text.
@@ -176,8 +184,8 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
         - Conciseness: Is it easy to read? (0-100)
         (Do not add any markdown around this specific line, just the raw bracketed string)
 
-        Input Text:
-        {text[:20000]}
+        Raw Input Text:
+        "{text}"
     """)
 
     # Try models in order with Smart Retry
