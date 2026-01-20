@@ -86,6 +86,22 @@
                   </div>
                 </div>
                 <div class="dropdown-divider"></div>
+                <div v-if="isAdmin" class="dropdown-item" @click="currentView = 'AdminDashboard'; showDropdown = false">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 3h18v18H3z" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M3 9h18M9 21V9" stroke="currentColor" stroke-width="1.5"/>
+                  </svg>
+                  Admin Dashboard
+                </div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item" @click="openChangePasswordModal">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="1.5"/>
+                  </svg>
+                  เปลี่ยนรหัสผ่าน
+                </div>
+                <div class="dropdown-divider"></div>
                 <div class="dropdown-item logout-item" @click="logout">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="1.5"/>
@@ -119,7 +135,8 @@
       
       <div class="content-body">
         <div v-if="isAuthenticated" class="authenticated-content">
-          <Summarizer ref="summarizerComponent" />
+          <AdminDashboard v-if="currentView === 'AdminDashboard'" />
+          <Summarizer v-else ref="summarizerComponent" />
         </div>
         <div v-else class="auth-content">
           <Login v-if="currentView === 'Login'" @authenticated="onAuthenticated" @switch-to-register="currentView = 'Register'" />
@@ -128,15 +145,45 @@
       </div>
       
       <footer style="text-align: center; padding: 1rem; opacity: 0.6; font-size: 0.8rem;">
-        System v2.0 (Robust Mode)
+        System v2.0 DEV Pannawat (Robust Mode)
       </footer>
     </main>
+
+    <!-- Change Password Modal -->
+    <div v-if="showChangePasswordModal" class="modal-overlay" @click.self="closeChangePasswordModal">
+      <div class="modal-content">
+        <h3>เปลี่ยนรหัสผ่าน</h3>
+        <form @submit.prevent="handleChangePassword">
+          <div class="form-group">
+            <label>รหัสผ่านปัจจุบัน</label>
+            <input type="password" v-model="passwordForm.current_password" required placeholder="ระบุรหัสผ่านปัจจุบัน" />
+          </div>
+          <div class="form-group">
+             <label>รหัสผ่านใหม่</label>
+             <input type="password" v-model="passwordForm.new_password" required placeholder="ระบุรหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)" minlength="4" />
+          </div>
+          <div class="form-group">
+             <label>ยืนยันรหัสผ่านใหม่</label>
+             <input type="password" v-model="passwordForm.confirm_password" required placeholder="ยืนยันรหัสผ่านใหม่" />
+          </div>
+          <p v-if="passwordError" class="error-text">{{ passwordError }}</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="closeChangePasswordModal">ยกเลิก</button>
+            <button type="submit" class="btn-confirm" :disabled="isChangingPassword">
+               {{ isChangingPassword ? 'กำลังบันทึก...' : 'บันทึก' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script>
 import Summarizer from './components/Summarizer.vue';
 import HistorySidebar from './components/HistorySidebar.vue';
+import AdminDashboard from './components/AdminDashboard.vue';
 import Login from './components/Login.vue';
 import Register from './components/Register.vue';
 import axios from 'axios';
@@ -148,6 +195,7 @@ export default {
   components: {
     Summarizer,
     HistorySidebar,
+    AdminDashboard,
     Login,
     Register
   },
@@ -163,12 +211,23 @@ export default {
         email: '',
         avatar_url: null
       },
-      isUploading: false
+      isUploading: false,
+      showChangePasswordModal: false,
+      isChangingPassword: false,
+      passwordForm: {
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      },
+      passwordError: null
     };
   },
   computed: {
     isGuest() {
       return this.currentUser && (this.currentUser.username === 'Guest' || this.currentUser.email === '');
+    },
+    isAdmin() {
+      return this.currentUser && this.currentUser.role === 'admin';
     }
   },
   created() {
@@ -318,6 +377,40 @@ export default {
         }
       } catch (error) {
         console.error("Failed to load history details:", error);
+      }
+    },
+    openChangePasswordModal() {
+      this.showChangePasswordModal = true;
+      this.showDropdown = false;
+      this.passwordError = null;
+      this.passwordForm = { current_password: '', new_password: '', confirm_password: '' };
+    },
+    closeChangePasswordModal() {
+      this.showChangePasswordModal = false;
+    },
+    async handleChangePassword() {
+      this.passwordError = null;
+      if (this.passwordForm.new_password !== this.passwordForm.confirm_password) {
+        this.passwordError = "รหัสผ่านใหม่ไม่ตรงกัน";
+        return;
+      }
+      
+      this.isChangingPassword = true;
+      try {
+        const token = localStorage.getItem('token');
+        await axios.post(`${API_URL}/users/change-password`, {
+             current_password: this.passwordForm.current_password,
+             new_password: this.passwordForm.new_password
+        }, {
+           headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        alert("เปลี่ยนรหัสผ่านสำเร็จ!");
+        this.closeChangePasswordModal();
+      } catch (error) {
+        this.passwordError = error.response?.data?.detail || "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน";
+      } finally {
+        this.isChangingPassword = false;
       }
     }
   }
@@ -521,5 +614,100 @@ export default {
   .modern-navbar {
       border-bottom: none !important;
   }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--card-bg, white);
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--text-color, #1e293b);
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted, #64748b);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: var(--input-bg, #f8fafc);
+  color: var(--text-color, #1e293b);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.btn-confirm {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+:global([data-theme='dark']) .modal-content {
+   background: #1f2937;
+}
+:global([data-theme='dark']) .form-group input {
+   background: #374151;
+   border-color: #4b5563;
+   color: white;
 }
 </style>

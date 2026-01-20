@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Body
 from ..database.mongo import user_collection
 from ..auth.auth_bearer import JWTBearer
-from ..auth.auth_handler import decode_jwt
+from ..auth.auth_handler import decode_jwt, verify_password, get_password_hash
+from ..models.user import ChangePasswordSchema
 import shutil
 import os
 from pathlib import Path
@@ -89,6 +90,40 @@ async def get_current_user_profile(token: str = Depends(JWTBearer())):
     
     return {
         "username": user["username"],
-        "email": user["email"],
-        "avatar_url": user.get("avatar_url")
+        "avatar_url": user.get("avatar_url"),
+        "role": user.get("role", "user")
     }
+
+@router.post("/change-password", dependencies=[Depends(JWTBearer())])
+async def change_password(payload: ChangePasswordSchema = Body(...), token: str = Depends(JWTBearer())):
+    # 1. Get User ID
+    user_data = decode_jwt(token)
+    user_id = user_data.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=403, detail="Invalid Token")
+        
+    # 2. Get User from DB
+    user = await user_collection.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # 3. Verify Current Password
+    # Note: If user uses Google Auth, they might not have a password. 
+    # In that case, they should use "Forgot Password" or we allow setting it if empty.
+    # Here we assume standard flow:
+    if not user.get("password"):
+         raise HTTPException(status_code=400, detail="Google-authenticated users cannot change password here.")
+
+    if not verify_password(payload.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="รหัสผ่านเดิมไม่ถูกต้อง")
+        
+    # 4. Hash New Password
+    hashed_password = get_password_hash(payload.new_password)
+    
+    # 5. Update DB
+    await user_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"password": hashed_password}}
+    )
+    
+    return {"status": "success", "message": "เปลี่ยนรหัสผ่านสำเร็จ"}

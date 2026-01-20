@@ -142,7 +142,7 @@
     
     <div class="controls-section">
       <div class="control-group">
-        <label class="control-label">จำนวนประโยคที่ต้องการสรุป</label>
+        <label class="control-label">จำนวนหัวข้อที่ต้องการสรุป</label>
         <div class="number-input-wrapper">
           <input 
             type="number" 

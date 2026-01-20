@@ -23,6 +23,9 @@ def get_hashed_password_v2(password: str) -> str:
     print(f"DEBUG: Pre-hashed length: {len(password_hash)} (Should be 64)")
     return pwd_context.hash(password_hash)
 
+# Alias for compatibility
+get_password_hash = get_hashed_password_v2
+
 def verify_password(password: str, hashed_password: str) -> bool:
     try:
         # Check for our custom Fallback format (from Vercel robust mode)

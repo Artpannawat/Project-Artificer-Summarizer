@@ -1,6 +1,7 @@
 import re
 import math
 from collections import Counter
+from deep_translator import GoogleTranslator
 
 class SummarizationModel:
     def summarize(self, text: str, num_sentences: int = 5, min_length: int = 20, max_length: int = 2000) -> dict:
@@ -96,6 +97,29 @@ class SummarizationModel:
             
             summary = [valid_sentences[i] for i in ranked_indices]
             
+            # Save original summary for metrics (before translation changes the language)
+            pre_translation_summary = summary
+            
+            # --- TRANSLATION LOGIC (For Basic Engine Requirement) ---
+            # If the text is English (detected by first sentence), translate to Thai
+            if summary and re.match(r'^[A-Za-z]', summary[0].strip()):
+                try:
+                    translator = GoogleTranslator(source='auto', target='th')
+                    # Optimize: Join sentences with newlines to send a SINGLE HTTP request
+                    # This is significantly faster than batching (which might validly iterate under the hood)
+                    joined_text = "\n".join(summary)
+                    translated_text = translator.translate(joined_text)
+                    
+                    # Split back into list
+                    if translated_text:
+                         summary = translated_text.split("\n")
+                    else:
+                         # Fallback if result is empty
+                         pass
+                except Exception as e:
+                    print(f"Translation Error: {e}")
+                    # Fallback to original if translation fails
+            
             # Format as bullet points
             formatted_summary = "\n".join([f"- {sentence}" for sentence in summary])
             
@@ -116,7 +140,12 @@ class SummarizationModel:
             keywords = [w.lower() for w in all_words if w.lower() not in stopwords and len(w.strip()) > 1]
             if keywords:
                  most_common = [w for w, count in Counter(keywords).most_common(20)]
-                 summary_tokens = set(processor.tokenize(formatted_summary))
+                 
+                 # FIX: Use pre-translation summary for metric consistency (Language Match)
+                 # Join list back to string for tokenization
+                 check_text = "\n".join(pre_translation_summary)
+                 summary_tokens = set(processor.tokenize(check_text))
+                 
                  hit_count = sum(1 for w in most_common if w in summary_tokens)
                  completeness = int((hit_count / len(most_common)) * 100)
             else:

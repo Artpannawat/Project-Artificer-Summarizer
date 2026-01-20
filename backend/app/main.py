@@ -9,8 +9,7 @@ from .summarizer.summarization_model import SummarizationModel
 from .models.user import UserSchema, UserLoginSchema, TokenSchema
 from .database.mongo import user_collection, create_unique_index, client, history_collection
 from .auth.auth_handler import get_hashed_password_v2, verify_password, sign_jwt, decode_jwt, verify_google_token
-from .routers.users import router as user_router
-from .routers.history import router as history_router
+from .routers import users, history, admin
 from decouple import config
 import os
 import warnings
@@ -98,8 +97,24 @@ if not static_dir.exists():
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # Include Routers
-app.include_router(user_router, prefix="/users", tags=["users"])
-app.include_router(history_router, prefix="/api", tags=["history"]) 
+app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(history.router, prefix="/api/history", tags=["History"])
+app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+
+@app.on_event("startup")
+async def promote_admin_user():
+    # Auto-promote specific user to admin on startup
+    target_email = "pbsosza@gmail.com"
+    user = await user_collection.find_one({"email": target_email})
+    if user:
+        if user.get("role") != "admin":
+            await user_collection.update_one(
+                {"email": target_email},
+                {"$set": {"role": "admin"}}
+            )
+            print(f"INFO: Auto-promoted {target_email} to Admin.")
+    else:
+        print(f"INFO: Pending Admin promotion - User {target_email} not found yet.") 
 
 @app.on_event("startup")
 async def startup_db_client():
