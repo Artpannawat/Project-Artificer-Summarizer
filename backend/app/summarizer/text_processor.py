@@ -5,20 +5,39 @@ class TextProcessor:
         if not text:
             return ""
 
-        # 1. Filter Noise (Script artifacts, etc.) - Moved to TOP
-        # Remove entire lines or blocks that look like script metadata BEFORE merging lines
-        patterns = [
-            r'(?i)^\s*(?:Scene|Int\.|Ext\.|ซีน|ฉาก)\s*[\d:]+.*$',  # Scene headers (Thai/Eng)
-            r'(?i)^\s*(?:Voice\s*Over|VO|Camera(?:\s*Angle)?|Cut\s*to|เสียงบรรยาย|มุมกล้อง)\s*[:\s].*$',  # Camera/Audio directions
-            r'(?i)^\s*(?:นักแสดง|ตัวละคร|Character|Cast)\s*[:\s].*$', # Actor lists
-            r'(?i)^\s*(?:ภาพ|Visual)\s*[:\s].*$', # Visual descriptions
-            r'(?i)^[A-Z\s]+:\s.*$', # ENGLISH_NAME: Dialogue (simple heuristic)
-            r'\[\d{1,2}:\d{2}\]|\(\d{1,2}:\d{2}\)', # Timestamps
-            r'\([^)]*\)' # Stage directions in parentheses e.g. (laughing)
-        ]
+        # 1. Filter Noise (Script artifacts) - Moved to TOP
         
-        for pattern in patterns:
+        # A. Delete WHOLE lines for technical headers (Scenes, Camera, Visuals)
+        delete_patterns = [
+            r'(?i)^\s*(?:Scene|Int\.|Ext\.|ซีน|ฉาก)\s*[\d:]+.*$', 
+            r'(?i)^\s*(?:Camera(?:\s*Angle)?|Cut\s*to|มุมกล้อง|ภาพ|Visual)\s*[:\s].*$',
+            r'(?i)^\s*\[\s*.*\s*\]\s*$' # Lines that are just [timestamps] or [actions]
+        ]
+        for pattern in delete_patterns:
             text = re.sub(pattern, '', text, flags=re.MULTILINE)
+
+        # B. Delete ONLY PREFIXES for Dialogue/VO (Keep the content!)
+        # Pattern: "Speaker: " -> ""
+        prefix_patterns = [
+            r'(?i)^\s*(?:Voice\s*Over|VO|เสียงบรรยาย|บทพูด|Dialogue|Line)\s*[:\s]+', 
+            r'(?i)^\s*(?:นักแสดง|ตัวละคร|Character|Cast|พี่\s*[A-Z])\s*[:\s]+',
+            r'(?i)^\s*[A-Z\s]+:\s', # ENGLISH_NAME: ...
+            r'(?i)^\s*[^:\n]+:\s' # Generic Name: ... (Catch all remaining speaker labels if possible, careful not to eat sentences)
+        ]
+        for pattern in prefix_patterns:
+            text = re.sub(pattern, ' ', text, flags=re.MULTILINE)
+
+        # C. Cleaning common list bullets/OCRs that mess up TextRank
+        # Remove leading "•", "-", "0", "*" at start of lines
+        text = re.sub(r'(?m)^\s*[•●▪\-*0o๐]+\s+', ' ', text)
+        
+        # D. Remove inline artifacts
+        inline_patterns = [
+            r'\[\d{1,2}:\d{2}\]', r'\(\d{1,2}:\d{2}\)', # Timestamps
+            r'\([^)]*\)' # Stage directions in parentheses (laughing)
+        ]
+        for pattern in inline_patterns:
+            text = re.sub(pattern, '', text)
         
         # 2. Normalize line breaks: Replace single newlines with spaces, keep double newlines (paragraphs)
         # This fixes PDF hard-wraps where a sentence is split across lines.
