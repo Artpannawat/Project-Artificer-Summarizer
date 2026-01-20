@@ -9,97 +9,17 @@ from .summarizer.summarization_model import SummarizationModel
 from .models.user import UserSchema, UserLoginSchema, TokenSchema
 from .database.mongo import user_collection, create_unique_index, client, history_collection
 from .auth.auth_handler import get_hashed_password_v2, verify_password, sign_jwt, decode_jwt, verify_google_token
-from .routers import users, history, admin
+from .routers.users import router as user_router
+from .routers.history import router as history_router
+from .routers.admin import router as admin_router
 from decouple import config
-import os
-import warnings
-# Suppress FutureWarning from google.generativeai
-warnings.filterwarnings("ignore", category=FutureWarning)
 
-STARTUP_ERRORS = []
-
-HAS_GENAI = False
-try:
-    import google.generativeai as genai
-    HAS_GENAI = True
-except ImportError as e:
-    STARTUP_ERRORS.append(f"ImportError: google.generativeai: {e}")
-except Exception as e:
-    STARTUP_ERRORS.append(f"Error importing google.generativeai: {e}")
-
-from pathlib import Path
-from datetime import datetime
-
-# ... (Previous imports and initialization code remains the same up to app definition)
-
-# DEBUG: Print current directory
-print(f"DEBUG: Current Directory: {os.getcwd()}")
-
-# Explicitly find .env file
-env_path = Path(__file__).resolve().parent.parent / '.env'
-# ... (Env loading logic remains same)
-if env_path.exists():
-    from decouple import Config, RepositoryEnv
-    config = Config(RepositoryEnv(env_path))
-
-GOOGLE_API_KEY = config("GOOGLE_API_KEY", default=None)
-# ... (Gemini init logic remains same)
-if GOOGLE_API_KEY and HAS_GENAI:
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        gemini_model = "active" 
-    except Exception as e:
-        gemini_model = None
-        STARTUP_ERRORS.append(f"GenAI Configure Error: {e}")
-else:
-    gemini_model = None
-    if not HAS_GENAI:
-        STARTUP_ERRORS.append("GenAI module missing")
-
-import textwrap
-
-# Try to import full file processor, fallback to simple one
-try:
-    from .summarizer.file_processor import FileProcessor
-    file_processor = FileProcessor()
-    FILE_PROCESSOR_MODE = "full"
-except ImportError as e:
-    STARTUP_ERRORS.append(f"FileProcessor Import Error: {e}")
-    from .summarizer.simple_file_processor import SimpleFileProcessor
-    file_processor = SimpleFileProcessor()
-    FILE_PROCESSOR_MODE = "simple"
-except Exception as e:
-    STARTUP_ERRORS.append(f"FileProcessor Unexpected Error: {e}")
-    from .summarizer.simple_file_processor import SimpleFileProcessor
-    file_processor = SimpleFileProcessor()
-    FILE_PROCESSOR_MODE = "simple"
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Mount static files
-# Mount static files (Safely)
-import os
-static_dir = Path("backend/static")
-if not static_dir.exists():
-    # If static dir missing (common in Vercel if empty), use /tmp
-    static_dir = Path("/tmp/static")
-    static_dir.mkdir(parents=True, exist_ok=True)
-    print(f"DEBUG: 'backend/static' not found. Mounting {static_dir} instead.")
-
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+# ... (rest of imports)
 
 # Include Routers
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(history.router, prefix="/api/history", tags=["History"])
-app.include_router(admin.router, prefix="/admin", tags=["Admin"])
+app.include_router(user_router, prefix="/users", tags=["Users"])
+app.include_router(history_router, prefix="/api/history", tags=["History"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 @app.on_event("startup")
 async def promote_admin_user():
