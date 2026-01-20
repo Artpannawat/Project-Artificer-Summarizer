@@ -150,7 +150,8 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     
     # Strategies: Multi-Model Fallback Priority
     strategies = [
-        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Working/Fastest)'},
+        {'model': 'gemini-1.5-flash', 'desc': 'Gemini 1.5 Flash (Most Stable)'},
+        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Fast)'},
         {'model': 'gemini-2.0-flash-lite-preview-02-05', 'desc': 'Gemini 2.0 Flash Lite (Preview)'},
     ]
 
@@ -214,7 +215,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 
             except Exception as e:
                 print(f"DEBUG: Failed with {model_name}: {e}")
-                last_error = e
+                last_error = e # Keep track of the last error
                 
                 # RESTORED: Smart Wait for 429 (Critical for Free Key)
                 if "429" in str(e) or "quota" in str(e).lower():
@@ -226,6 +227,10 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                     
                     if attempt < max_retries_per_model - 1:
                          continue
+                
+                # If it's a 404/400 (Not Found / Invalid Argument) or Limit 0, fail fast to next model
+                if "404" in str(e) or "not found" in str(e).lower() or "limit: 0" in str(e).lower():
+                     break
                 
                 break
         
