@@ -3,11 +3,13 @@
     <!-- Modern Professional Navbar -->
     <nav class="modern-navbar">
       <div class="navbar-content">
-        <div class="logo-section" @click="handleLogoClick" style="cursor: pointer;">
-          <div class="logo-icon">
-            <img src="/logo.png" alt="Artificer Logo" class="app-logo-img" />
+        <div class="nav-left-wrapper" style="display: flex; align-items: center; gap: 16px; flex: 0 0 auto;">
+          <div class="logo-click-area" @click="handleLogoClick" style="cursor: pointer; display: flex; align-items: center;">
+            <div class="logo-icon">
+              <img src="/logo.png" alt="Artificer Logo" class="app-logo-img" />
+            </div>
+            <span class="logo-text">Artificer</span>
           </div>
-          <span class="logo-text">Artificer</span>
           
           <!-- History Toggle Button -->
           <button v-if="isAuthenticated && !isGuest" @click="toggleSidebar" class="history-toggle-btn" title="ประวัติการใช้งาน">
