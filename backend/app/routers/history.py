@@ -15,7 +15,7 @@ async def get_current_user_id(token: str = Depends(JWTBearer())):
         raise HTTPException(status_code=401, detail="Invalid token")
     return decoded["user_id"]
 
-@router.get("/history", response_model=List[HistoryResponseSchema])
+@router.get("/", response_model=List[HistoryResponseSchema])
 async def get_history(user_id: str = Depends(get_current_user_id)):
     """Fetch all history items for the current user (Lightweight)"""
     cursor = history_collection.find({"user_id": user_id}).sort("created_at", -1)
@@ -30,7 +30,7 @@ async def get_history(user_id: str = Depends(get_current_user_id)):
         })
     return results
 
-@router.get("/history/{item_id}")
+@router.get("/{item_id}")
 async def get_history_detail(item_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetch full details of a specific history item"""
     if not ObjectId.is_valid(item_id):
@@ -45,7 +45,7 @@ async def get_history_detail(item_id: str, user_id: str = Depends(get_current_us
     del item["_id"]
     return item
 
-@router.delete("/history/{item_id}")
+@router.delete("/{item_id}")
 async def delete_history_item(item_id: str, user_id: str = Depends(get_current_user_id)):
     """Delete a specific history item"""
     if not ObjectId.is_valid(item_id):
@@ -57,7 +57,7 @@ async def delete_history_item(item_id: str, user_id: str = Depends(get_current_u
     
     return {"status": "success", "message": "Item deleted"}
 
-@router.delete("/history")
+@router.delete("/")
 async def clear_history(user_id: str = Depends(get_current_user_id)):
     """Delete all history for the user"""
     await history_collection.delete_many({"user_id": user_id})
