@@ -14,10 +14,10 @@ class SummarizationModel:
         # Dynamic Sentence Calculation (User Request: "Half of Gemini length" ~ longer than default)
         # If num_sentences is not strictly provided (or is default 5), we calculate it dynamically.
         if num_sentences == 5:
-             # Heuristic: 1 summary sentence for every 10 original sentences/paragraphs
-             # Min 5, Max 15 to avoid wall of text
+             # Heuristic: Increase to 25% of original sentences (More detailed)
+             # Min 7, Max 20
              approx_sentences = len(re.split(r'[.!\n]', text))
-             dynamic_count = max(5, min(15, int(approx_sentences * 0.15)))
+             dynamic_count = max(7, min(20, int(approx_sentences * 0.25)))
              num_sentences = dynamic_count
         
         num_sentences = max(1, int(num_sentences))

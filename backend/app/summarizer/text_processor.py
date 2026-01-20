@@ -94,34 +94,37 @@ class TextProcessor:
                 if chunk.strip():
                     raw_sentences.append(chunk.strip())
         
-        # 4. Repair broken sentences (e.g. ending with conjunctions)
+        # 4. Repair broken sentences (e.g. ending with conjunctions) & Merge short fragments
         final_sentences = []
         bad_endings = ('แต่', 'และ', 'หรือ', 'ก็', 'คือ', 'ว่า', 'ซึ่ง', 'ที่', 'เพื่อ', 'โดย')
         
         buffer = ""
+        # Heuristic: Minimum length for a "complete" Thai sentence/thought
+        MIN_SENTENCE_LENGTH = 40 
+        
         for s in raw_sentences:
             s = s.strip()
             if not s: continue
             
+            # If buffer exists, we are in merging mode
             if buffer:
-                # Merge with previous buffer
                 buffer += " " + s
-                # Check if we still need to buffer
-                if buffer.endswith(bad_endings):
+                # Keep merging if it ends with bad word OR is still too short
+                if buffer.endswith(bad_endings) or len(buffer) < MIN_SENTENCE_LENGTH:
                     continue
                 else:
                     final_sentences.append(buffer)
                     buffer = ""
             else:
-                if s.endswith(bad_endings):
+                # New sentence candidate
+                if s.endswith(bad_endings) or len(s) < MIN_SENTENCE_LENGTH:
                     buffer = s
                 else:
-                    # Check for very short fragments (likely noise)
-                    if len(s) > 10:
-                        final_sentences.append(s)
+                    final_sentences.append(s)
         
-        # Flush buffer if anything remains
+        # Flush buffer
         if buffer:
              final_sentences.append(buffer)
-             
-        return final_sentences
+
+        # Final filtering of very short noise that might have survived
+        return [s for s in final_sentences if len(s) > 20]
