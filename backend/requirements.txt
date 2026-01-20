@@ -19,3 +19,4 @@ deep-translator
 PyPDF2
 docx2txt
 Pillow
+pymupdf

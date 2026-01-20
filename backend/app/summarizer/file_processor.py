@@ -133,7 +133,12 @@ class FileProcessor:
                     
                     for page_num in range(pdf_document.page_count):
                         page = pdf_document.load_page(page_num)
-                        text += page.get_text() + "\n"
+                        # Use "blocks" with sort=True to ensure reading order (top-left to bottom-right)
+                        # This fixes issues where Thai characters are out of order in the raw stream
+                        blocks = page.get_text("blocks", sort=True)
+                        for b in blocks:
+                            # b[4] contains the text of the block
+                            text += b[4] + "\n"
                     
                     pdf_document.close()
                     

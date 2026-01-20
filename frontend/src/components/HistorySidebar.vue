@@ -137,7 +137,11 @@ export default {
         }
     },
     formatTime(dateString) {
-      return new Date(dateString).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     }
   }
 };
