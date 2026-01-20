@@ -5,8 +5,9 @@ class TextProcessor:
         if not text:
             return ""
         
-        # 1. Normalize line breaks
-        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        # 1. Normalize line breaks: Replace single newlines with spaces, keep double newlines (paragraphs)
+        # This fixes PDF hard-wraps where a sentence is split across lines.
+        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
         
         # 2. Thai Normalization: Combine Nikhahit + Sara Aa -> Sara Am
         text = text.replace('\u0E4D\u0E32', '\u0E33') 
@@ -67,16 +68,15 @@ class TextProcessor:
     def segment_sentences(self, text: str) -> list[str]:
         """
         Segment text into sentences using traditional Thai logic (Space delimeted)
-        plus newlines and punctuation.
+        plus newlines and punctuation. Includes logic to repair broken sentences.
         """
         if not text:
             return []
             
         # 1. Split by newlines first (Paragraphs often imply sentence breaks)
-        # Using keepends=False to drop the newline chars
         lines = text.splitlines()
         
-        sentences = []
+        raw_sentences = []
         for line in lines:
             line = line.strip()
             if not line:
@@ -84,11 +84,40 @@ class TextProcessor:
                 
             # 2. Split by standard punctuation if present
             # 3. For Thai, only split if there are TWO or more spaces (paragraph breaks)
-            # Standard single spaces are kept as part of the phrase.
             chunks = re.split(r'(?:[!?.]+| {2,})', line)
             
             for chunk in chunks:
                 if chunk.strip():
-                    sentences.append(chunk.strip())
-                
-        return sentences
+                    raw_sentences.append(chunk.strip())
+        
+        # 4. Repair broken sentences (e.g. ending with conjunctions)
+        final_sentences = []
+        bad_endings = ('แต่', 'และ', 'หรือ', 'ก็', 'คือ', 'ว่า', 'ซึ่ง', 'ที่', 'เพื่อ', 'โดย')
+        
+        buffer = ""
+        for s in raw_sentences:
+            s = s.strip()
+            if not s: continue
+            
+            if buffer:
+                # Merge with previous buffer
+                buffer += " " + s
+                # Check if we still need to buffer
+                if buffer.endswith(bad_endings):
+                    continue
+                else:
+                    final_sentences.append(buffer)
+                    buffer = ""
+            else:
+                if s.endswith(bad_endings):
+                    buffer = s
+                else:
+                    # Check for very short fragments (likely noise)
+                    if len(s) > 10:
+                        final_sentences.append(s)
+        
+        # Flush buffer if anything remains
+        if buffer:
+             final_sentences.append(buffer)
+             
+        return final_sentences
