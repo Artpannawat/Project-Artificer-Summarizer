@@ -8,11 +8,14 @@ motor
 passlib[bcrypt]
 PyJWT
 python-multipart
-google-generativeai
+google-genai
 dnspython
 certifi
 requests
 google-auth
+cachecontrol
+cryptography
+deep-translator
 PyPDF2
 docx2txt
 Pillow

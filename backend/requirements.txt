@@ -6,7 +6,6 @@ email-validator
 python-decouple
 motor
 passlib[bcrypt]
-
 PyJWT
 python-multipart
 google-genai
@@ -17,3 +16,6 @@ google-auth
 cachecontrol
 cryptography
 deep-translator
+PyPDF2
+docx2txt
+Pillow
