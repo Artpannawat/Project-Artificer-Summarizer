@@ -208,11 +208,25 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
             
         except Exception as e:
             # Log error and continue to next model
-            print(f"DEBUG: Failed with {model_name}: {e}")
-            last_error = e
+            # If 429 (Quota), we try to parse the recommended wait time
+            if "429" in str(e) or "quota" in str(e).lower():
+                import time
+                wait_time = 30 # Default safety wait
+                try:
+                    # Extracts "retry in 25.220225223s"
+                    if "retry in" in str(e):
+                        parts = str(e).split("retry in")
+                        seconds_part = parts[1].strip().split("s")[0]
+                        wait_time = float(seconds_part) + 1.0 # Add 1s buffer
+                except:
+                    pass
+                
+                print(f"DEBUG: Rate Limit Hit. Waiting {wait_time:.2f}s before fallback...")
+                time.sleep(wait_time)
+                # After waiting, we continue to the next model logic (which will run immediately)
+                continue 
             
-            # If 429 (Quota), we MUST stop hammering (Backoff is already applied above for next loop)
-            # But if it's the LAST model, we stop naturally.
+            # Other errors: continue to next model
             continue 
     
     # If all failed
