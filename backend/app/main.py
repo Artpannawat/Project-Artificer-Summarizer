@@ -31,7 +31,7 @@ except Exception as e:
     STARTUP_ERRORS.append(f"Error importing google.generativeai: {e}")
 
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 # DEBUG: Print current directory
 try:
@@ -501,7 +501,7 @@ async def summarize_text(
                         "title": request.text[:50] + "..." if len(request.text) > 50 else request.text,
                         "original_text": request.text,
                         "summary_result": result,
-                        "created_at": datetime.utcnow(),
+                        "created_at": datetime.now(timezone.utc),
                         "is_favorite": False
                     }
                     await history_collection.insert_one(history_item)

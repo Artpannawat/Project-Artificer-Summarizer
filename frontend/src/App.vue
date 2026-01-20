@@ -3,11 +3,9 @@
     <!-- Modern Professional Navbar -->
     <nav class="modern-navbar">
       <div class="navbar-content">
-        <div class="logo-section">
-          <div class="logo-icon">
+        <div class="logo-section" @click="handleLogoClick" style="cursor: pointer;">
           <div class="logo-icon">
             <img src="/logo.png" alt="Artificer Logo" class="app-logo-img" />
-          </div>
           </div>
           <span class="logo-text">Artificer</span>
           
@@ -411,6 +409,12 @@ export default {
         this.passwordError = error.response?.data?.detail || "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน";
       } finally {
         this.isChangingPassword = false;
+      }
+    },
+    handleLogoClick() {
+      if (this.isAuthenticated) {
+        this.currentView = 'Summarizer';
+        this.isSidebarOpen = false;
       }
     }
   }
