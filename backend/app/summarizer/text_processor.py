@@ -11,6 +11,10 @@ class TextProcessor:
         # 2. Normalize whitespace (remove zero-width spaces, multiple spaces)
         text = re.sub(r"[\u200b\u200c\u200d\uFEFF]", "", text)
         text = re.sub(r"\s+", " ", text).strip()
+
+        # 3. Fix broken Thai text (PDF extraction often adds spaces between characters: เ ค รื่ อ ง)
+        # Regex: Look for space between two Thai characters and remove it
+        text = re.sub(r'(?<=[\u0E00-\u0E7F])\s+(?=[\u0E00-\u0E7F])', '', text)
         
         return text
 
