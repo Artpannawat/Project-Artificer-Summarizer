@@ -6,9 +6,9 @@ MONGO_DETAILS = config("MONGO_DETAILS", default="mongodb://localhost:27017")
 
 # Use certifi for SSL only if connecting to Cloud (Atlas), skip for Localhost to avoid SSL Error
 if "localhost" in MONGO_DETAILS or "127.0.0.1" in MONGO_DETAILS:
-    client = AsyncIOMotorClient(MONGO_DETAILS)
+    client = AsyncIOMotorClient(MONGO_DETAILS, serverSelectionTimeoutMS=5000)
 else:
-    client = AsyncIOMotorClient(MONGO_DETAILS, tlsCAFile=certifi.where())
+    client = AsyncIOMotorClient(MONGO_DETAILS, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
 db = client.artificer_summarizer # Export 'db' as well for flexible usage
 database = db # Alias for existing code
 user_collection = database.get_collection("users")

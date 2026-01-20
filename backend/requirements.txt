@@ -14,4 +14,6 @@ dnspython
 certifi
 requests
 google-auth
+cachecontrol
+cryptography
 deep-translator
