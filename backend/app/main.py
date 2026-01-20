@@ -215,18 +215,12 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 
                 # RESTORED: Smart Wait for 429 (Critical for Free Key)
                 if "429" in str(e) or "quota" in str(e).lower():
-                    import time
-                    wait_time = 5 # Minimum wait
-                    if "retry in" in str(e):
-                        try:
-                            parts = str(e).split("retry in")
-                            seconds_part = parts[1].strip().split("s")[0]
-                            wait_time = float(seconds_part) + 1.0
-                        except:
-                            pass
-                    
-                    print(f"DEBUG: Rate Limit Hit. Waiting {wait_time:.2f}s...")
-                    time.sleep(wait_time)
+                    # User Request: Cut time out! No waiting!
+                    print(f"DEBUG: Rate Limit Hit. Retrying immediately (No Wait Mode)...")
+                    # import time
+                    # wait_time = 5 
+                    # ... parsing logic skipped ...
+                    # time.sleep(wait_time) 
                     
                     if attempt < max_retries_per_model - 1:
                          continue
