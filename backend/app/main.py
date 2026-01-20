@@ -148,7 +148,6 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     strategies = [
         {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Fastest)'},
         {'model': 'gemini-1.5-flash', 'desc': 'Gemini 1.5 Flash (Stable)'},
-        {'model': 'gemini-1.5-pro', 'desc': 'Gemini 1.5 Pro (High Quality)'},
     ]
 
     last_error = None
