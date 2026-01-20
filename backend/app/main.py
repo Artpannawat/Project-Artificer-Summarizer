@@ -232,7 +232,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 
                 # If it's a 404/400 (Not Found / Invalid Argument) or Limit 0, fail fast to next model
                 if "404" in str(e) or "not found" in str(e).lower() or "limit: 0" in str(e).lower():
-                     all_errors.append(f"{model_name}: Resource Not Found/Limit 0")
+                     all_errors.append(f"{model_name}: {str(e)}") # Show FULL error
                      break
                 
                 all_errors.append(f"{model_name}: {str(e)}")
