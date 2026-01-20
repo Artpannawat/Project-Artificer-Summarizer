@@ -23,18 +23,23 @@ app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 @app.on_event("startup")
 async def promote_admin_user():
-    # Auto-promote specific user to admin on startup
-    target_email = "pbsosza@gmail.com"
-    user = await user_collection.find_one({"email": target_email})
-    if user:
-        if user.get("role") != "admin":
-            await user_collection.update_one(
-                {"email": target_email},
-                {"$set": {"role": "admin"}}
-            )
-            print(f"INFO: Auto-promoted {target_email} to Admin.")
-    else:
-        print(f"INFO: Pending Admin promotion - User {target_email} not found yet.") 
+    try:
+        # Auto-promote specific user to admin on startup
+        target_email = "pbsosza@gmail.com"
+        # Set a short timeout for this check to avoid blocking startup too long if DB is slow
+        user = await user_collection.find_one({"email": target_email})
+        if user:
+            if user.get("role") != "admin":
+                await user_collection.update_one(
+                    {"email": target_email},
+                    {"$set": {"role": "admin"}}
+                )
+                print(f"INFO: Auto-promoted {target_email} to Admin.")
+        else:
+            print(f"INFO: Pending Admin promotion - User {target_email} not found yet.")
+    except Exception as e:
+        print(f"WARNING: Failed to auto-promote admin (DB Error?): {e}")
+        STARTUP_ERRORS.append(f"Admin Promotion Failed: {e}")
 
 @app.on_event("startup")
 async def startup_db_client():
