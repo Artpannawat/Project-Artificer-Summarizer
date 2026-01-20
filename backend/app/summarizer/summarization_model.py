@@ -36,8 +36,9 @@ class SummarizationModel:
             if not valid_sentences:
                 return text[:500] + "..." if len(text) > 500 else text
 
-            if len(valid_sentences) <= num_sentences:
-                return " ".join(valid_sentences)
+            # if len(valid_sentences) <= num_sentences:
+            #    # FIX: Don't return plain string. Let it flow to formatting.
+            #    pass
 
             # 2. TextRank Implementation (Graph-Based)
             

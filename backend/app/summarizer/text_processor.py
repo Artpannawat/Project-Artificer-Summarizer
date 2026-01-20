@@ -86,6 +86,10 @@ class TextProcessor:
             # 3. For Thai, only split if there are TWO or more spaces (paragraph breaks)
             chunks = re.split(r'(?:[!?.]+| {2,})', line)
             
+            # Fallback: If chunks are huge and few (likely single-spaced PDF), try splitting by single space
+            if len(chunks) <= 1 and len(line) > 300:
+                 chunks = re.split(r'(?:[!?.]+| )', line)
+
             for chunk in chunks:
                 if chunk.strip():
                     raw_sentences.append(chunk.strip())
