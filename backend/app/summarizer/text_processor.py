@@ -10,9 +10,16 @@ class TextProcessor:
         
         # 2. Normalize whitespace (remove zero-width spaces, multiple spaces)
         text = re.sub(r"[\u200b\u200c\u200d\uFEFF]", "", text)
+        
+        # 3. Thai Normalization: Combine Nikhahit + Sara Aa -> Sara Am (Standardize decomposed chars)
+        text = text.replace('\u0E4D\u0E32', '\u0E33') 
+        # Also fix reverse order just in case (Sara Aa + Nikhahit) -> Sara Am
+        text = text.replace('\u0E32\u0E4D', '\u0E33')
+
+        # 4. Clean spacing
         text = re.sub(r"\s+", " ", text).strip()
 
-        # 3. Fix broken Thai text (PDF extraction often adds spaces between characters: เ ค รื่ อ ง)
+        # 5. Fix broken Thai text (PDF extraction often adds spaces between characters: เ ค รื่ อ ง)
         # Regex: Look for space between two Thai characters and remove it
         text = re.sub(r'(?<=[\u0E00-\u0E7F])\s+(?=[\u0E00-\u0E7F])', '', text)
         
@@ -20,18 +27,8 @@ class TextProcessor:
 
     
     def __init__(self):
-        # Small Dictionary for "Basic" Tokenization (Lite version of PyThaiNLP)
-        # Focus on "Function Words" that act as natural delimiters + Common words
-        self.thai_dict = set([
-            "การ", "ความ", "ที่", "ซึ่ง", "อัน", "และ", "หรือ", "แต่", "ก็", "ด้วย", "โดย", "ใน", "นอก", "บน", "ล่าง", "เหนือ", "ใต้", 
-            "จาก", "ถึง", "สู่", "ยัง", "ให้", "ได้", "ไป", "มา", "มี", "เป็น", "อยู่", "จะ", "ต้อง", "น่า", "ควร", "อยาก", "ไม่", "ใช่", "ว่า",
-            "เขา", "เธอ", "ฉัน", "มัน", "เรา", "ท่าน", "คน", "สัตว์", "สิ่ง", "ของ", "ผู้", "งาน", "เงิน", "ใจ", "ดี", "เลว", "มาก", "น้อย",
-            "สูง", "ต่ำ", "ใหญ่", "เล็ก", "ใหม่", "เก่า", "แรก", "หลัง", "ก่อน", "นี้", "นั้น", "โน้น", "ไหน", "ไร", "ใคร", "เมื่อ", "ถ้า", "หาก",
-            "เพราะ", "จึง", "แล้ว", "เลย", "นะ", "ครับ", "ค่ะ", "จ้ะ", "ละ", "สิ", "พ.ศ.", "จ.ศ.", "ร.ศ.", "บาท", "ดอลลาร์", "เมตร", "กิโลเมตร",
-            "วัน", "เดือน", "ปี", "เวลา", "นาที", "ชั่วโมง", "ประเทศ", "จังหวัด", "อำเภอ", "ตำบล", "โรงเรียน", "มหาวิทยาลัย", "บริษัท", "ระบบ",
-            "ข้อมูล", "ปัญหา", "ผล", "เหตุ", "ช่วย", "ส่ง", "รับ", "ซื้อ", "ขาย", "ติดต่อ", "สื่อสาร", "พัฒนา", "บริหาร", "จัดการ", "วิเคราะห์",
-            "สรุป", "รายงาน", "ตัวอย่าง", "เช่น", "ได้แก่", "อาทิ", "สำหรับ", "เพื่อ", "ต่อ", "ของ", "แห่ง", "ราย", "กลุ่ม", "พวก", "เหล่า"
-        ])
+        from .constants import THAI_DICT
+        self.thai_dict = THAI_DICT
         self.max_word_len = 20 # Max length to scan for dictionary match
 
     def tokenize(self, text: str) -> list[str]:
@@ -66,10 +63,7 @@ class TextProcessor:
                         break
                 
                 if not found:
-                    # If not found in dict, take 1 character (or group of non-Thai chars)
-                    # Optimization: Group unknown chars until we hit a known start-char? 
-                    # For Basic Engine, just take 1 char is safe but slow/fragmented.
-                    # Let's try to group "Unknowns"
+                    # If not found in dict, take 1 character
                     tokens.append(chunk[i])
                     i += 1
         
@@ -97,35 +91,37 @@ class TextProcessor:
                 continue
                 
             # 3. Handling Thai long paragraphs without punctuation
-            # If a chunk is very long (>150 chars), try to find logical break points
-            # Thai typically uses space for sentence boundaries, but also for emphasis.
-            # We look for spaces that are likely sentence boundaries.
-            
-            if len(chunk) > 150:
-                # Heuristic: Split by spaces that follow key conjunctions or standard gaps
-                # This Regex looks for a space followed by typical Thai starting words or just large gaps
-                # But to be safe for "Basic" engine, we just split by "  " (double space) if exists,
-                # or single space if it's really long.
+            if len(chunk) > 120:
+                # If we stripped spaces, splitting by ' ' won't work.
+                # Use tokenize() to recover word boundaries, then group them.
                 
-                # Split by any space, then regroup
-                words = chunk.split(' ')
+                words = self.tokenize(chunk)
                 current_sent = []
                 current_len = 0
                 
+                # Intelligent Splitters
+                conjunctions = {'ดังนั้น', 'เพราะ', 'แต่', 'อย่างไรก็ตาม', 'นอกจากนี้', 'ทั้งนี้', 'โดย', 'เพื่อ', 'สำหรับ', 'ซึ่ง', 'ที่'}
+                
                 for word in words:
-                    conjunctions = ['ดังนั้น', 'เพราะ', 'แต่', 'อย่างไรก็ตาม', 'นอกจากนี้', 'ทั้งนี้', 'โดย', 'เพื่อ']
+                    # If current sentence is substantial AND we hit a conjunction OR it's just getting too long
+                    should_split = False
                     
-                    # If current sentence is long enough AND (we hit a conjunction OR just getting too long)
-                    if current_len > 80 and (word in conjunctions or current_len > 200):
-                        final_sentences.append(" ".join(current_sent))
+                    if current_len > 60: # Minimum length before considering split
+                        if word in conjunctions:
+                            should_split = True
+                        elif current_len > 150: # Hard limit fallback
+                            should_split = True
+                    
+                    if should_split:
+                        final_sentences.append("".join(current_sent)) # Thai usually has no space
                         current_sent = [word]
                         current_len = len(word)
                     else:
                         current_sent.append(word)
-                        current_len += len(word) + 1
+                        current_len += len(word)
                 
                 if current_sent:
-                    final_sentences.append(" ".join(current_sent))
+                    final_sentences.append("".join(current_sent))
             else:
                 final_sentences.append(chunk.strip())
                 
