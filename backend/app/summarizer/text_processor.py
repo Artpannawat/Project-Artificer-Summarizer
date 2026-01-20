@@ -4,29 +4,31 @@ class TextProcessor:
     def clean_text(self, text: str) -> str:
         if not text:
             return ""
-        
-        # 1. Normalize line breaks: Replace single newlines with spaces, keep double newlines (paragraphs)
-        # This fixes PDF hard-wraps where a sentence is split across lines.
-        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
-        
-        # 1.5 Filter Noise (Script artifacts, etc.) - ROBUST REGEX
-        # Remove entire lines or blocks that look like script metadata
+
+        # 1. Filter Noise (Script artifacts, etc.) - Moved to TOP
+        # Remove entire lines or blocks that look like script metadata BEFORE merging lines
         patterns = [
-            r'(?i)^\s*(?:Scene|Int\.|Ext\.)\s*[\d:]+.*$',  # Scene headers
-            r'(?i)^\s*(?:Voice\s*Over|VO|Camera(?:\s*Angle)?|Cut\s*to)\s*:.*$',  # Camera/Audio directions
-            r'(?i)^[A-Z\s]+:\s.*$', # ENGLISH_NAME: Dialogue (simple heuristic for script format)
+            r'(?i)^\s*(?:Scene|Int\.|Ext\.|ซีน|ฉาก)\s*[\d:]+.*$',  # Scene headers (Thai/Eng)
+            r'(?i)^\s*(?:Voice\s*Over|VO|Camera(?:\s*Angle)?|Cut\s*to|เสียงบรรยาย|มุมกล้อง)\s*[:\s].*$',  # Camera/Audio directions
+            r'(?i)^\s*(?:นักแสดง|ตัวละคร|Character|Cast)\s*[:\s].*$', # Actor lists
+            r'(?i)^\s*(?:ภาพ|Visual)\s*[:\s].*$', # Visual descriptions
+            r'(?i)^[A-Z\s]+:\s.*$', # ENGLISH_NAME: Dialogue (simple heuristic)
             r'\[\d{1,2}:\d{2}\]|\(\d{1,2}:\d{2}\)', # Timestamps
             r'\([^)]*\)' # Stage directions in parentheses e.g. (laughing)
         ]
         
         for pattern in patterns:
             text = re.sub(pattern, '', text, flags=re.MULTILINE)
-
-        # 2. Thai Normalization: Combine Nikhahit + Sara Aa -> Sara Am
+        
+        # 2. Normalize line breaks: Replace single newlines with spaces, keep double newlines (paragraphs)
+        # This fixes PDF hard-wraps where a sentence is split across lines.
+        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+        
+        # 3. Thai Normalization: Combine Nikhahit + Sara Aa -> Sara Am
         text = text.replace('\u0E4D\u0E32', '\u0E33') 
         text = text.replace('\u0E32\u0E4D', '\u0E33')
 
-        # 3. Collapse multiple spaces
+        # 4. Collapse multiple spaces
         text = re.sub(r' +', ' ', text)
         
         return text.strip()
