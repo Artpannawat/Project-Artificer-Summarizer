@@ -144,11 +144,11 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     if not gemini_model or not HAS_GENAI:
         return f"AI system is offline. Startup Errors: {STARTUP_ERRORS}"
     
-    # Strategies: Multi-Model Fallback Priority (Updated based on Diagnostic)
+    # Strategies: Multi-Model Fallback Priority
     strategies = [
-        {'model': 'gemini-2.5-flash', 'desc': 'Gemini 2.5 Flash (New & Working)'}, 
-        {'model': 'gemini-2.0-flash-lite-preview-02-05', 'desc': 'Gemini 2.0 Flash Lite Preview'},
-        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash'},
+        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Fastest)'},
+        {'model': 'gemini-1.5-flash', 'desc': 'Gemini 1.5 Flash (Stable)'},
+        {'model': 'gemini-1.5-pro', 'desc': 'Gemini 1.5 Pro (High Quality)'},
     ]
 
     last_error = None
@@ -180,26 +180,26 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
         {text[:20000]}
     """)
 
-    # Try models in order with Smart Retry (Exponential Backoff)
+    # Try models in order with Smart Retry
     retry_delay = 1
     
     for i, strategy in enumerate(strategies):
         model_name = strategy['model']
         
-        # Exponential Backoff before retrying (if not the first attempt)
+        # Exponential Backoff before retrying next model
         if i > 0:
-            # User requested to cut delays
-            pass
+            print(f"DEBUG: Waiting {retry_delay}s before trying next model...")
+            import time
+            time.sleep(retry_delay)
+            retry_delay *= 2 
             
-        # Nested Retry Logic for 429 Errors (Try same model again after wait)
+        # Nested Retry Logic for 429 Errors
         max_retries_per_model = 2
         for attempt in range(max_retries_per_model):
             try:
                 print(f"DEBUG: Trying {strategy['desc']} (Model: {model_name}) [Attempt {attempt+1}]...")
                 
-                # Configure with the single available key
                 genai.configure(api_key=GOOGLE_API_KEY)
-                
                 model = genai.GenerativeModel(model_name)
                 response = model.generate_content(prompt)
                 
@@ -210,15 +210,23 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                     raise ValueError("Response blocked by Safety Filters or Empty.")
                 
             except Exception as e:
-                # Log error
                 print(f"DEBUG: Failed with {model_name}: {e}")
                 last_error = e
                 
-                # If 429, we NO LONGER WAIT (User Request)
-                # We just retry immediately or fail fast.
+                # RESTORED: Smart Wait for 429 (Critical for Free Key)
                 if "429" in str(e) or "quota" in str(e).lower():
-                    print(f"DEBUG: Rate Limit Hit. Retrying immediately (No Wait Mode)...")
-                    # time.sleep(wait_time) # DISABLED
+                    import time
+                    wait_time = 5 # Minimum wait
+                    if "retry in" in str(e):
+                        try:
+                            parts = str(e).split("retry in")
+                            seconds_part = parts[1].strip().split("s")[0]
+                            wait_time = float(seconds_part) + 1.0
+                        except:
+                            pass
+                    
+                    print(f"DEBUG: Rate Limit Hit. Waiting {wait_time:.2f}s...")
+                    time.sleep(wait_time)
                     
                     if attempt < max_retries_per_model - 1:
                          continue
