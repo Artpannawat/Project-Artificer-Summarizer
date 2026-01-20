@@ -83,9 +83,9 @@ class TextProcessor:
                 continue
                 
             # 2. Split by standard punctuation if present
-            # 3. Also split by space, as Thai uses space for sentence boundaries
-            # We filter out empty strings
-            chunks = re.split(r'[\s.!?]+', line)
+            # 3. For Thai, only split if there are TWO or more spaces (paragraph breaks)
+            # Standard single spaces are kept as part of the phrase.
+            chunks = re.split(r'(?:[!?.]+| {2,})', line)
             
             for chunk in chunks:
                 if chunk.strip():

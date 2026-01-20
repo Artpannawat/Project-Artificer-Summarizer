@@ -8,7 +8,19 @@ class SummarizationModel:
         if not text:
             return ""
 
-        num_sentences = max(1, int(num_sentences or 5))
+        if not text:
+            return ""
+
+        # Dynamic Sentence Calculation (User Request: "Half of Gemini length" ~ longer than default)
+        # If num_sentences is not strictly provided (or is default 5), we calculate it dynamically.
+        if num_sentences == 5:
+             # Heuristic: 1 summary sentence for every 10 original sentences/paragraphs
+             # Min 5, Max 15 to avoid wall of text
+             approx_sentences = len(re.split(r'[.!\n]', text))
+             dynamic_count = max(5, min(15, int(approx_sentences * 0.15)))
+             num_sentences = dynamic_count
+        
+        num_sentences = max(1, int(num_sentences))
 
         try:
             # 1. Preprocessing & Segmentation
