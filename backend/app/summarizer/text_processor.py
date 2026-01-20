@@ -9,6 +9,12 @@ class TextProcessor:
         # This fixes PDF hard-wraps where a sentence is split across lines.
         text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
         
+        # 1.5 Filter Noise (Script artifacts, etc.) - ADDED
+        # Removes lines starting with "Scene X:", "Voice Over:", "Cut to:", "Camera:", etc.
+        text = re.sub(r'(?i)(Scene\s*\d+|Voice\s*Over|Cut\s*to|Camera|Angle|Inter|Outer).*?[:\n]', '', text)
+        # Remove timestamps like [00:12] or (12:00)
+        text = re.sub(r'\[\d{1,2}:\d{2}\]|\(\d{1,2}:\d{2}\)', '', text)
+        
         # 2. Thai Normalization: Combine Nikhahit + Sara Aa -> Sara Am
         text = text.replace('\u0E4D\u0E32', '\u0E33') 
         text = text.replace('\u0E32\u0E4D', '\u0E33')
