@@ -388,14 +388,6 @@ async def register_user(user: UserSchema = Body(...)):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_msg)
 
-@app.options("/login", tags=["auth"])
-async def login_options():
-    return {}
-
-@app.options("/register", tags=["auth"])
-async def register_options():
-    return {}
-
 @app.post("/login", response_model=TokenSchema, tags=["auth"])
 async def user_login(user: UserLoginSchema = Body(...)):
     user_data = await user_collection.find_one({"email": user.email})
@@ -407,9 +399,9 @@ async def user_login(user: UserLoginSchema = Body(...)):
     
     raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-@app.options("/auth/google", tags=["auth"])
-async def google_login_options():
-    return {}
+@app.get("/auth/debug", tags=["auth"])
+async def auth_debug():
+    return {"status": "ok", "message": "Auth routes are accessible"}
 
 @app.post("/auth/google", tags=["auth"])
 async def google_login(token_data: dict = Body(...)):
