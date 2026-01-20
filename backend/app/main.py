@@ -146,10 +146,8 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     
     # Strategies: Multi-Model Fallback Priority
     strategies = [
-        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Fastest/Live)'},
-        {'model': 'gemini-1.5-flash', 'desc': 'Gemini 1.5 Flash (Standard)'},
-        {'model': 'gemini-1.5-flash-001', 'desc': 'Gemini 1.5 Flash (v001)'},
-        {'model': 'gemini-1.5-flash-002', 'desc': 'Gemini 1.5 Flash (v002)'},
+        {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Working/Fastest)'},
+        {'model': 'gemini-2.0-flash-lite-preview-02-05', 'desc': 'Gemini 2.0 Flash Lite (Preview)'},
     ]
 
     last_error = None
