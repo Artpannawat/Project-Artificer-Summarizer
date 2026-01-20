@@ -9,12 +9,19 @@ class TextProcessor:
         # This fixes PDF hard-wraps where a sentence is split across lines.
         text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
         
-        # 1.5 Filter Noise (Script artifacts, etc.) - ADDED
-        # Removes lines starting with "Scene X:", "Voice Over:", "Cut to:", "Camera:", etc.
-        text = re.sub(r'(?i)(Scene\s*\d+|Voice\s*Over|Cut\s*to|Camera|Angle|Inter|Outer).*?[:\n]', '', text)
-        # Remove timestamps like [00:12] or (12:00)
-        text = re.sub(r'\[\d{1,2}:\d{2}\]|\(\d{1,2}:\d{2}\)', '', text)
+        # 1.5 Filter Noise (Script artifacts, etc.) - ROBUST REGEX
+        # Remove entire lines or blocks that look like script metadata
+        patterns = [
+            r'(?i)^\s*(?:Scene|Int\.|Ext\.)\s*[\d:]+.*$',  # Scene headers
+            r'(?i)^\s*(?:Voice\s*Over|VO|Camera(?:\s*Angle)?|Cut\s*to)\s*:.*$',  # Camera/Audio directions
+            r'(?i)^[A-Z\s]+:\s.*$', # ENGLISH_NAME: Dialogue (simple heuristic for script format)
+            r'\[\d{1,2}:\d{2}\]|\(\d{1,2}:\d{2}\)', # Timestamps
+            r'\([^)]*\)' # Stage directions in parentheses e.g. (laughing)
+        ]
         
+        for pattern in patterns:
+            text = re.sub(pattern, '', text, flags=re.MULTILINE)
+
         # 2. Thai Normalization: Combine Nikhahit + Sara Aa -> Sara Am
         text = text.replace('\u0E4D\u0E32', '\u0E33') 
         text = text.replace('\u0E32\u0E4D', '\u0E33')
@@ -23,6 +30,25 @@ class TextProcessor:
         text = re.sub(r' +', ' ', text)
         
         return text.strip()
+
+    def _is_valid_sentence(self, sentence: str) -> bool:
+        """
+        Heuristic check: Return False if sentence is junk/noise.
+        """
+        s = sentence.strip()
+        if len(s) < 15:
+            return False
+            
+        # Conjunctions that indicate a fragment, not a main point
+        bad_starters = ('และ', 'แต่', 'ซึ่ง', 'ยิ่งไปกว่านั้น', 'นอกจากนี้', 'เพราะ', 'โดย', 'ที่')
+        if s.startswith(bad_starters):
+            # However, if it's very long, it might be a valid complex sentence.
+            # But usually for summary, we want standalone sentences.
+            # Let's be strict for < 40 chars, lenient for long ones.
+            if len(s) < 40:
+                return False
+                
+        return True
 
     def __init__(self):
         try:
@@ -120,18 +146,20 @@ class TextProcessor:
                 if buffer.endswith(bad_endings) or len(buffer) < MIN_SENTENCE_LENGTH:
                     continue
                 else:
-                    final_sentences.append(buffer)
+                    if self._is_valid_sentence(buffer):
+                         final_sentences.append(buffer)
                     buffer = ""
             else:
                 # New sentence candidate
                 if s.endswith(bad_endings) or len(s) < MIN_SENTENCE_LENGTH:
                     buffer = s
                 else:
-                    final_sentences.append(s)
+                    if self._is_valid_sentence(s):
+                         final_sentences.append(s)
         
         # Flush buffer
-        if buffer:
+        if buffer and self._is_valid_sentence(buffer):
              final_sentences.append(buffer)
 
         # Final filtering of very short noise that might have survived
-        return [s for s in final_sentences if len(s) > 20]
+        return [s for s in final_sentences if self._is_valid_sentence(s)]
