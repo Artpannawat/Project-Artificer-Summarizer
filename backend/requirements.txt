@@ -16,7 +16,6 @@ google-auth
 cachecontrol
 cryptography
 deep-translator
-PyPDF2
 docx2txt
 Pillow
-pymupdf
+pdfplumber

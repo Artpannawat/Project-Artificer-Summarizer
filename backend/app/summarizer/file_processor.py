@@ -4,17 +4,45 @@ from typing import Union
 from fastapi import UploadFile, HTTPException
 
 # Try to import optional dependencies
-try:
-    import PyPDF2
-    HAS_PYPDF2 = True
-except ImportError:
-    HAS_PYPDF2 = False
 
 try:
-    import fitz  # PyMuPDF
-    HAS_PYMUPDF = True
+    import pdfplumber
+    HAS_PDFPLUMBER = True
 except ImportError:
-    HAS_PYMUPDF = False
+    HAS_PDFPLUMBER = False
+
+# ... (imports)
+
+    async def _extract_from_pdf(self, content: bytes) -> str:
+        """Extract text from PDF file using pdfplumber (better for Thai & Lighter than PyMuPDF)"""
+        if not HAS_PDFPLUMBER:
+             raise HTTPException(
+                status_code=500, 
+                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี pdfplumber installed"
+            )
+        
+        try:
+            text = ""
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                for page in pdf.pages:
+                    # extract_text usually preserves layout better than raw extraction
+                    # x_tolerance and y_tolerance can be adjusted if needed for Thai
+                    page_text = page.extract_text(x_tolerance=2, y_tolerance=3) 
+                    if page_text:
+                        text += page_text + "\n"
+            
+            if text.strip():
+                return text
+                
+            raise HTTPException(
+                status_code=400, 
+                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ PDF ได้ (อาจเป็นไฟล์สแกน)"
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
 
 try:
     import docx2txt
