@@ -187,6 +187,11 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     # Try models in order with Smart Retry
     retry_delay = 1
     
+    # Try models in order with Smart Retry (Exponential Backoff)
+    retry_delay = 1
+    all_errors = []
+    all_errors = []
+
     for i, strategy in enumerate(strategies):
         model_name = strategy['model']
         
@@ -215,7 +220,6 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 
             except Exception as e:
                 print(f"DEBUG: Failed with {model_name}: {e}")
-                last_error = e # Keep track of the last error
                 
                 # RESTORED: Smart Wait for 429 (Critical for Free Key)
                 if "429" in str(e) or "quota" in str(e).lower():
@@ -230,8 +234,10 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 
                 # If it's a 404/400 (Not Found / Invalid Argument) or Limit 0, fail fast to next model
                 if "404" in str(e) or "not found" in str(e).lower() or "limit: 0" in str(e).lower():
+                     all_errors.append(f"{model_name}: Resource Not Found/Limit 0")
                      break
                 
+                all_errors.append(f"{model_name}: {str(e)}")
                 break
         
         # Exponential Backoff for next model
@@ -239,7 +245,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
              retry_delay *= 2 
     
     # If all failed
-    return f"AI Service Error: All models failed. System busy or quota exceeded. Last error: {str(last_error)}"
+    return f"AI Service Error: All models failed. Details: {'; '.join(all_errors)}"
 
 
 class EvaluationRequest(BaseModel):
