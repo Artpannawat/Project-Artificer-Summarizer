@@ -8,7 +8,7 @@ motor
 passlib[bcrypt]
 PyJWT
 python-multipart
-google-genai
+google-generativeai
 dnspython
 certifi
 requests
