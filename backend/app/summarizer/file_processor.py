@@ -11,38 +11,7 @@ try:
 except ImportError:
     HAS_PDFPLUMBER = False
 
-# ... (imports)
 
-    async def _extract_from_pdf(self, content: bytes) -> str:
-        """Extract text from PDF file using pdfplumber (better for Thai & Lighter than PyMuPDF)"""
-        if not HAS_PDFPLUMBER:
-             raise HTTPException(
-                status_code=500, 
-                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี pdfplumber installed"
-            )
-        
-        try:
-            text = ""
-            with pdfplumber.open(io.BytesIO(content)) as pdf:
-                for page in pdf.pages:
-                    # extract_text usually preserves layout better than raw extraction
-                    # x_tolerance and y_tolerance can be adjusted if needed for Thai
-                    page_text = page.extract_text(x_tolerance=2, y_tolerance=3) 
-                    if page_text:
-                        text += page_text + "\n"
-            
-            if text.strip():
-                return text
-                
-            raise HTTPException(
-                status_code=400, 
-                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ PDF ได้ (อาจเป็นไฟล์สแกน)"
-            )
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
 
 try:
     import docx2txt
@@ -144,55 +113,29 @@ class FileProcessor:
         raise HTTPException(status_code=400, detail="ไม่สามารถระบุประเภทไฟล์ได้")
     
     async def _extract_from_pdf(self, content: bytes) -> str:
-        """Extract text from PDF file using available PDF libraries"""
-        if not HAS_PYMUPDF and not HAS_PYPDF2:
-            raise HTTPException(
+        """Extract text from PDF file using pdfplumber (better for Thai & Lighter than PyMuPDF)"""
+        if not HAS_PDFPLUMBER:
+             raise HTTPException(
                 status_code=500, 
-                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี PDF processing libraries"
+                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี pdfplumber installed"
             )
         
         try:
             text = ""
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                for page in pdf.pages:
+                    # extract_text usually preserves layout better than raw extraction
+                    # x_tolerance and y_tolerance can be adjusted if needed for Thai
+                    page_text = page.extract_text(x_tolerance=2, y_tolerance=3) 
+                    if page_text:
+                        text += page_text + "\n"
             
-            # Try PyMuPDF first (better for complex PDFs)
-            if HAS_PYMUPDF:
-                try:
-                    pdf_document = fitz.open(stream=content, filetype="pdf")
-                    
-                    for page_num in range(pdf_document.page_count):
-                        page = pdf_document.load_page(page_num)
-                        # Use "blocks" with sort=True to ensure reading order (top-left to bottom-right)
-                        # This fixes issues where Thai characters are out of order in the raw stream
-                        blocks = page.get_text("blocks", sort=True)
-                        for b in blocks:
-                            # b[4] contains the text of the block
-                            text += b[4] + "\n"
-                    
-                    pdf_document.close()
-                    
-                    if text.strip():
-                        return text
-                except Exception:
-                    pass  # Try PyPDF2 as fallback
-            
-            # Fallback to PyPDF2
-            if HAS_PYPDF2:
-                try:
-                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
-                    text = ""
-                    
-                    for page in pdf_reader.pages:
-                        text += page.extract_text() + "\n"
-                    
-                    if text.strip():
-                        return text
-                except Exception:
-                    pass
-            
-            # If both methods fail
+            if text.strip():
+                return text
+                
             raise HTTPException(
-                status_code=500, 
-                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ PDF ได้ ไฟล์อาจเสียหายหรือมีการป้องกัน"
+                status_code=400, 
+                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ PDF ได้ (อาจเป็นไฟล์สแกน)"
             )
             
         except HTTPException:
