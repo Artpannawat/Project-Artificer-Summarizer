@@ -143,7 +143,7 @@ class TextRequest(BaseModel):
 def summarize_with_ai(text: str, num_sentences: int) -> str:
 
 
-    # Strategies: Multi-Model Fallback Priority (Based on actual availability)
+    # กลยุทธ์: ลำดับความสำคัญการ Fallback หลายโมเดล (ขึ้นอยู่กับความพร้อมใช้งานจริง)
     strategies = [
         {'model': 'gemini-2.0-flash', 'desc': 'Gemini 2.0 Flash (Standard)'},
         {'model': 'gemini-2.0-flash-lite', 'desc': 'Gemini 2.0 Flash Lite (Efficient)'},
@@ -191,22 +191,21 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
     # Try models in order with Smart Retry
     retry_delay = 1
     
-    # Try models in order with Smart Retry (Exponential Backoff)
+    # ลองใช้โมเดลตามลำดับด้วย Smart Retry (Exponential Backoff)
     retry_delay = 1
-    all_errors = []
     all_errors = []
 
     for i, strategy in enumerate(strategies):
         model_name = strategy['model']
         
-        # Exponential Backoff before retrying next model
+        # Exponential Backoff ก่อนลองโมเดลถัดไป
         if i > 0:
             print(f"DEBUG: Waiting {retry_delay}s before trying next model...")
             import time
             time.sleep(retry_delay)
             retry_delay *= 2 
             
-        # Nested Retry Logic for 429 Errors
+        # ตรรกะการลองซ้ำแบบซ้อน (Nested Retry) สำหรับข้อผิดพลาด 429
         max_retries_per_model = 5
         for attempt in range(max_retries_per_model):
             try:
@@ -225,9 +224,9 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
             except Exception as e:
                 print(f"DEBUG: Failed with {model_name}: {e}")
                 
-                # RESTORED: Smart Wait for 429 (Critical for Free Key)
+                # กู้คืน: การรอคอยอัจฉริยะ (Smart Wait) สำหรับ 429 (สำคัญสำหรับคีย์ฟรี)
                 if "429" in str(e) or "quota" in str(e).lower():
-                    # User Request: Fresh Key = No Wait!
+                    # คำขอจากผู้ใช้: คีย์ใหม่ = ไม่ต้องรอ!
                     print(f"DEBUG: Rate Limit Hit. Retrying immediately (No Wait Mode)...")
                     # import time
                     # ... wait logic disabled ...
@@ -236,7 +235,7 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                     if attempt < max_retries_per_model - 1:
                          continue
                 
-                # If it's a 404/400 (Not Found / Invalid Argument) or Limit 0, fail fast to next model
+                # ถ้าเป็น 404/400 (ไม่พบ / อาร์กิวเมนต์ไม่ถูกต้อง) หรือ Limit 0 ให้ล้มเหลวทันทีเพื่อไปโมเดลถัดไป
                 if "404" in str(e) or "not found" in str(e).lower() or "limit: 0" in str(e).lower():
                      all_errors.append(f"{model_name}: {str(e)}") # Show FULL error
                      break
@@ -244,11 +243,11 @@ def summarize_with_ai(text: str, num_sentences: int) -> str:
                 all_errors.append(f"{model_name}: {str(e)}")
                 break
         
-        # Exponential Backoff for next model
+        # Exponential Backoff สำหรับโมเดลถัดไป
         if i < len(strategies) - 1:
              retry_delay *= 2 
     
-    # If all failed
+    # ถ้าล้มเหลวทั้งหมด
     return f"AI Service Error: All models failed. Details: {'; '.join(all_errors)}"
 
 
@@ -294,15 +293,15 @@ async def evaluate_quality_with_ai(original: str, summary: str) -> dict:
 
     try:
         genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash') # Fast model for evaluation
+        model = genai.GenerativeModel('gemini-2.0-flash') # โมเดลที่รวดเร็วสำหรับการประเมินผล
         response = await run_in_threadpool(model.generate_content, prompt)
         
-        # Simple parsing logic (JSON mode is better but text parsing is robust for now)
+        # ตรรกะการแยกวิเคราะห์ง่ายๆ (โหมด JSON ดีกว่า แต่การแยกวิเคราะห์ข้อความก็แข็งแกร่งพอสำหรับตอนนี้)
         text_res = response.text.strip()
-        # Ensure we get clean JSON
+        # ตรวจสอบให้แน่ใจว่าได้ JSON ที่สะอาด
         import json
         
-        # Try to find JSON block
+        # พยายามหาบล็อก JSON
         if "```json" in text_res:
             text_res = text_res.split("```json")[1].split("```")[0].strip()
         elif "{" in text_res:
@@ -358,18 +357,18 @@ async def register_user(user: UserSchema = Body(...)):
         if user_exists:
             raise HTTPException(status_code=400, detail="Email already registered.")
         
-        # 1A. Strict Email Validation (Real Existence Check)
+        # 1A. การตรวจสอบอีเมลอย่างเข้มงวด (ตรวจสอบการมีอยู่จริง)
         try:
             from email_validator import validate_email, EmailNotValidError
-            # check_deliverability=True performs a DNS check (MX record)
-            # This ensures the domain actually exists and accepts emails.
+            # check_deliverability=True performs a DNS check (MX record) --> check_deliverability=True ทำการตรวจสอบ DNS (ระเบียน MX)
+            # สิ่งนี้ทำให้แน่ใจว่าโดเมนมีอยู่จริงและรับอีเมล
             print(f"DEBUG: Validating email {user.email}...")
             validation = validate_email(user.email, check_deliverability=True)
             
-            # Normalize email (e.g. lowercase)
+            # ทำให้อีเมลเป็นมาตรฐาน (เช่น ตัวพิมพ์เล็ก)
             user.email = validation.email
             
-            # Optional: Strict Check for Gmail (if user specifically asked to be strict about it)
+            # ทางเลือก: ตรวจสอบอย่างเข้มงวดสำหรับ Gmail (ถ้าผู้ใช้ขอให้เข้มงวดเรื่องนี้)
             # if "gmail" in user.email and not user.email.endswith("@gmail.com"):
             #      raise HTTPException(status_code=400, detail="Please use a valid @gmail.com address.")
                  
@@ -379,38 +378,38 @@ async def register_user(user: UserSchema = Body(...)):
         except ImportError:
             print("WARNING: email-validator library not found. Skipping strict validation.")
         except Exception as e:
-            # DNS checks might timeout (rare), allow to proceed or fail depending on strictness.
-            # Here we just log and proceed for robustness vs network glitches.
+            # การตรวจสอบ DNS อาจหมดเวลา (หายาก) อนุญาตให้ดำเนินการต่อหรือล้มเหลวขึ้นอยู่กับความเข้มงวด
+            # ที่นี่เราแค่บันทึกและดำเนินการต่อเพื่อความทนทานต่อปัญหาเครือข่าย
             print(f"WARNING: Email validation check failed (Network issue?): {e}")
         
-        # INLINE FIX: Self-contained hashing to avoid Import Errors and bypass limits
+        # การแก้ไขแบบแทรกในบรรทัด: การแฮชแบบในตัวเพื่อหลีกเลี่ยงข้อผิดพลาด Import และข้ามข้อจำกัด
         import hashlib
         
         hashed_password = None
         
         try:
-            # Try Primary Method: Bcrypt with SHA256 Pre-hashing
+            # ลองวิธีหลัก: Bcrypt พร้อม Pre-hashing SHA256
             from passlib.context import CryptContext
             local_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
             
-            # 1. Pre-hash with SHA256 (Always 64 hex chars)
+            # 1. Pre-hash ด้วย SHA256 (64 ตัวอักษรฐานสิบหกเสมอ)
             pre_hash = hashlib.sha256(user.password.encode('utf-8')).hexdigest()
             
-            # 2. Hash with Bcrypt
+            # 2. แฮชด้วย Bcrypt
             hashed_password = local_pwd_context.hash(pre_hash)
             print("DEBUG: Using Bcrypt hashing")
             
         except Exception as e:
-            # Fallback Method: standard SHA256 (if passlib fails on Vercel)
+            # วิธีสำรอง: SHA256 มาตรฐาน (ถ้า passlib ล้มเหลวบน Vercel)
             print(f"WARNING: Bcrypt failed ({str(e)}). Falling back to pure SHA256.")
-            # Simple salted hash: sha256(password + static_salt) - Not ideal but verified working for now
+            # แฮชแบบใส่เกลืออย่างง่าย: sha256(password + static_salt) - ไม่ดีที่สุดแต่ตรวจสอบแล้วว่าใช้งานได้
             hashed_password = "SHA256_FALLBACK:" + hashlib.sha256(user.password.encode('utf-8')).hexdigest()
 
         user.password = hashed_password
         
         new_user = await user_collection.insert_one(user.model_dump())
         
-        # Ensure we return a string ID
+        # ตรวจสอบให้แน่ใจว่าเราคืนค่า ID เป็นสตริง
         return sign_jwt(str(new_user.inserted_id))
     except HTTPException:
         raise
@@ -495,16 +494,16 @@ async def summarize_text(
         if not request.text:
             raise HTTPException(status_code=400, detail="Input text cannot be empty.")
         
-        # 1. Basic Summary
+        # 1. การสรุปแบบพื้นฐาน
         processed_text = text_processor.clean_text(request.text)
         
-        # Parallel Execution
+        # การประมวลผลแบบขนาน
         basic_task = run_in_threadpool(summarization_model.summarize, processed_text, num_sentences=request.num_sentences or 5)
         ai_task = run_in_threadpool(summarize_with_ai, request.text, num_sentences=request.num_sentences or 5)
         
         basic_result, ai_summary = await asyncio.gather(basic_task, ai_task)
         
-        # Handle Dictionary Return from Basic Engine
+        # จัดการการคืนค่าแบบ Dictionary จาก Basic Engine
         if isinstance(basic_result, dict):
             basic_summary_text = basic_result.get("summary", "")
             basic_metrics = basic_result.get("metrics", None)
@@ -561,8 +560,26 @@ async def summarize_file(
         # Extract text
         extracted_text = await file_processor.extract_text_from_file(file)
         
+        # --- AI OCR Fallback (Hybrid Mode) ---
         if not extracted_text:
-            raise HTTPException(status_code=400, detail="ไม่พบเนื้อหาในไฟล์")
+            print("DEBUG: Local text extraction returned empty. Attempting AI OCR...")
+            
+            # Check if file is suitable for OCR (PDF or Image)
+            # file_processor guarantees PDF or Image types generally, but let's double check content type handled by Gemini
+            # Supported: application/pdf, image/jpeg, image/png, etc.
+            
+            # Reset cursor to read bytes for OCR
+            await file.seek(0)
+            file_bytes = await file.read()
+            
+            try:
+                extracted_text = await perform_ocr_with_gemini(file_bytes, file.content_type)
+            except Exception as e:
+                print(f"DEBUG: OCR Fallback failed: {e}")
+                raise HTTPException(status_code=400, detail=f"ไม่สามารถอ่านไฟล์ได้ (Scanned PDF) และ AI OCR ล้มเหลว: {str(e)}")
+        
+        if not extracted_text:
+            raise HTTPException(status_code=400, detail="ไม่พบเนื้อหาในไฟล์ (Blank File)")
         
         # Process and summarize text
         processed_text = await run_in_threadpool(text_processor.clean_text, extracted_text)
@@ -591,10 +608,10 @@ async def summarize_file(
             "comparison_mode": True
         }
 
-        # Auto-save history if user is logged in
+        # Auto-save history if user is logged in --> บันทึกประวัติอัตโนมัติถ้าผู้ใช้เข้าสู่ระบบแล้ว
         if authorization:
             try:
-                # Remove 'Bearer ' prefix if present
+                # Remove 'Bearer ' prefix if present --> ลบคำนำหน้า 'Bearer ' ถ้ามี
                 token = authorization.split(" ")[1] if " " in authorization else authorization
                 decoded = decode_jwt(token)
                 if decoded:
@@ -619,6 +636,65 @@ async def summarize_file(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"เกิดข้อผิดพลาดในการประมวลผลไฟล์: {str(e)}")
+
+async def perform_ocr_with_gemini(file_bytes: bytes, mime_type: str) -> str:
+    """Fallback OCR using Gemini with multiple model fallbacks and retry logic"""
+    if not HAS_GENAI or not GOOGLE_API_KEY:
+        raise Exception("AI System (Gemini) is explicitly required for scanned documents (OCR).")
+
+    genai.configure(api_key=GOOGLE_API_KEY)
+    
+    # Priority list of models to try for OCR
+    ocr_models = [
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite-preview-02-05", # Try the lite version
+        "gemini-2.0-flash-exp",
+        "gemini-flash-latest" # Fallback to latest stable flash alias
+    ]
+    
+    last_error = None
+    
+    print("DEBUG: Triggering AI OCR with fallback strategy...")
+    
+    prompt = "Transcribe the text from this image/document exactly as it appears. Output ONLY the text content. Do not add any markdown formatting or comments."
+    
+    for model_name in ocr_models:
+        try:
+            print(f"DEBUG: Attempting AI OCR with model: {model_name}")
+            model = genai.GenerativeModel(model_name)
+            
+            # Simple retry for 429 within the model attempt
+            for attempt in range(2):
+                try:
+                    response = await run_in_threadpool(
+                        model.generate_content,
+                        contents=[
+                            {'mime_type': mime_type, 'data': file_bytes},
+                            prompt
+                        ]
+                    )
+                    
+                    if response and response.text:
+                        print(f"DEBUG: AI OCR Success with {model_name}")
+                        return response.text.strip()
+                except Exception as e:
+                    if "429" in str(e):
+                        print(f"DEBUG: 429 Quota Exceeded for {model_name}. Retrying...")
+                        import time
+                        time.sleep(2) # Short wait before internal retry
+                        continue
+                    else:
+                        raise e # Re-raise other errors to break internal loop and try next model
+            
+        except Exception as e:
+            print(f"DEBUG: Failed with {model_name}: {e}")
+            last_error = e
+            continue
+            
+    # If we get here, all models failed
+    error_msg = f"All OCR models failed. Last error: {str(last_error)}"
+    print(f"DEBUG: {error_msg}")
+    raise Exception(error_msg)
 
 @app.get("/debug-routes")
 def debug_routes():

@@ -11,11 +11,11 @@ class SummarizationModel:
         if not text:
             return ""
 
-        # Dynamic Sentence Calculation (User Request: "Half of Gemini length" ~ longer than default)
-        # If num_sentences is not strictly provided (or is default 5), we calculate it dynamically.
+        # การคำนวณจำนวนประโยคแบบไดนามิก (คำขอจากผู้ใช้: "ครึ่งหนึ่งของ Gemini" ~ ยาวกว่าค่าเริ่มต้น)
+        # ถ้า num_sentences ไม่ได้ระบุมาอย่างเคร่งครัด (หรือเป็นค่าเริ่มต้น 5) เราจะคำนวณแบบไดนามิก
         if num_sentences == 5:
-             # Heuristic: Increase to 35% of original text (User request: "Long summary")
-             # Min 10, Max 30
+             # Heuristic: เพิ่มเป็น 35% ของข้อความต้นฉบับ (คำขอจากผู้ใช้: "สรุปยาว")
+             # ขั้นต่ำ 10, สูงสุด 30
              approx_sentences = len(re.split(r'[.!\n]', text))
              dynamic_count = max(10, min(30, int(approx_sentences * 0.35)))
              num_sentences = dynamic_count
@@ -23,52 +23,52 @@ class SummarizationModel:
         num_sentences = max(1, int(num_sentences))
 
         try:
-            # 1. Preprocessing & Segmentation
+            # 1. การเตรียมข้อมูลเบื้องต้น & การแบ่งส่วน
             from backend.app.summarizer.text_processor import TextProcessor
             processor = TextProcessor()
             
             clean_text = processor.clean_text(text)
             sentences = processor.segment_sentences(clean_text)
             
-            # Filter weak sentences
+            # กรองประโยคที่ไม่สมบูรณ์ออก
             valid_sentences = [s for s in sentences if len(s) >= min_length]
             
             if not valid_sentences:
                 return text[:500] + "..." if len(text) > 500 else text
 
             # if len(valid_sentences) <= num_sentences:
-            #    # FIX: Don't return plain string. Let it flow to formatting.
+            #    # แก้ไข: อย่าคืนค่าเป็นสตริงธรรมดา ปล่อยให้ไหลไปสู่การจัดรูปแบบ
             #    pass
 
-            # 2. TextRank Implementation (Graph-Based)
+            # 2. การใช้งาน TextRank (แบบกราฟ)
             
-            # Extended Stopwords for Thai/English
+            # คำหยุด (Stopwords) เพิ่มเติมสำหรับภาษาไทย/อังกฤษ
             stopwords = set([
                 "the", "is", "in", "at", "of", "on", "and", "a", "an", "to", "for", "with", "user", "defined", "this", "that", "it",
                 "การ", "ความ", "ที่", "ซึ่ง", "อัน", "ของ", "และ", "หรือ", "ใน", "โดย", "เป็น", "ไป", "มา", "จะ", "ให้", "ได้", "แต่",
                 "จาก", "ว่า", "เพื่อ", "กับ", "แก่", "แห่ง", "นั้น", "นี้", "กัน", "แล้ว", "จึง", "อยู่", "ถูก", "เอา"
             ])
 
-            # Pre-compute word sets for each sentence (Jaccard Similarity needs sets)
+            # คำนวณชุดคำล่วงหน้าสำหรับแต่ละประโยค (Jaccard Similarity ต้องการ set)
             sentence_words = []
             for sent in valid_sentences:
-                # USE CUSTOM TOKENIZER instead of .split()
-                # This allows identifying Thai words even without spaces
+                # ใช้ตัวตัดคำที่สร้างขึ้นเอง แทน .split()
+                # ช่วยให้ระบุคำภาษาไทยได้แม้ไม่มีช่องว่าง
                 words = processor.tokenize(sent)
                 
-                # Retrieve clean words (remove punctuation/single-char junk if needed)
+                # ดึงคำที่สะอาดแล้ว (ลบเครื่องหมายวรรคตอน/ขยะตัวอักษรเดียวถ้าจำเป็น)
                 clean_words = [w.lower() for w in words if w.lower() not in stopwords and len(w.strip()) > 0]
                 sentence_words.append(clean_words)
 
-            # Build Similarity Matrix
+            # สร้างเมทริกซ์ความคล้ายคลึง
             n = len(valid_sentences)
-            scores = [1.0] * n  # Initial PageRank scores
+            scores = [1.0] * n  # คะแนนเริ่มต้น PageRank
             damping = 0.85
             iterations = 10
             
-            # Similar to PageRank: score(i) = (1-d) + d * sum(score(j) * weight(j,i) / sum_weight(j))
-            # Simplified TextRank: score(i) = (1-d) + d * sum(similarity(i,j) * score(j))
-            # We use Jaccard Similarity for simplicity and speed.
+            # คล้ายกับ PageRank: score(i) = (1-d) + d * sum(score(j) * weight(j,i) / sum_weight(j))
+            # TextRank แบบย่อ: score(i) = (1-d) + d * sum(similarity(i,j) * score(j))
+            # เราใช้ Jaccard Similarity เพื่อความง่ายและความเร็ว
             
             def jaccard_similarity(words1, words2):
                 set1 = set(words1)
@@ -76,12 +76,12 @@ class SummarizationModel:
                 if not set1 or not set2:
                     return 0.0
                 intersection = len(set1.intersection(set2))
-                # Soft Jaccard to avoid pure 0 if small intersection but high relevance
+                # Soft Jaccard เพื่อหลีกเลี่ยงค่า 0 สนิท ถ้าการซ้อนทับน้อยแต่มีความเกี่ยวข้องสูง
                 union = len(set1) + len(set2) - intersection 
                 if union == 0: return 0.0
                 return intersection / union
 
-            # Run Power Method Iterations
+            # รันการวนซ้ำด้วย Power Method
             for _ in range(iterations):
                 new_scores = [0.0] * n
                 for i in range(n):
@@ -91,71 +91,71 @@ class SummarizationModel:
                         
                         sim = jaccard_similarity(sentence_words[i], sentence_words[j])
                         
-                        # Add contribution from neighbor j
+                        # เพิ่มค่าคะแนนจากเพื่อนบ้าน j
                         sum_similarity += sim * scores[j]
                     
                     new_scores[i] = (1 - damping) + damping * sum_similarity
                 scores = new_scores
 
-            # 4. Select Top Sentences
-            # Create pairs of (index, score)
+            # 4. เลือกประโยคยอดนิยม
+            # สร้างคู่ของ (ดัชนี, คะแนน)
             ranked_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:num_sentences]
             
-            # 5. Reorder logic
-            # User request: "Put main important topics first" (Score-based ordering)
-            # previously: ranked_indices.sort() (Original order)
+            # 5. ตรรกะการเรียงลำดับใหม่
+            # คำขอจากผู้ใช้: "เอาหัวข้อสำคัญขึ้นก่อน" (เรียงตามคะแนน)
+            # ก่อนหน้านี้: ranked_indices.sort() (เรียงตามลำดับเดิมในบทความ)
             
-            # We keep the list ordered by score (which is how ranked_indices was created effectively if we look at the selection logic)
-            # Wait, ranked_indices comes from sorting scores.
+            # เราเก็บรายการเรียงตามคะแนน (ซึ่งเป็นวิธีที่ ranked_indices ถูกสร้างขึ้น)
+            # เดี๋ยวนะ ranked_indices มาจากการเรียงคะแนนอยู่แล้ว
             
             summary = [valid_sentences[i] for i in ranked_indices]
             
-            # Save original summary for metrics (before translation changes the language)
+            # บันทึกสรุปต้นฉบับไว้สำหรับคำนวณตัวชี้วัด (ก่อนที่การแปลจะเปลี่ยนภาษา)
             pre_translation_summary = summary
             
-            # --- TRANSLATION LOGIC (For Basic Engine Requirement) ---
-            # If the text is English (detected by first sentence), translate to Thai
+            # --- ตรรกะการแปลภาษา (สำหรับข้อกำหนด Basic Engine) ---
+            # ถ้าข้อความเป็นภาษาอังกฤษ (ตรวจสอบจากประโยคแรก) ให้แปลเป็นไทย
             if summary and re.match(r'^[A-Za-z]', summary[0].strip()):
                 try:
                     translator = GoogleTranslator(source='auto', target='th')
-                    # Optimize: Join sentences with newlines to send a SINGLE HTTP request
-                    # This is significantly faster than batching (which might validly iterate under the hood)
+                    # ปรับประสิทธิภาพ: รวมประโยคด้วยบรรทัดใหม่เพื่อส่ง HTTP Request เดียว
+                    # เร็วกว่าการทำทีละประโยคอย่างมาก
                     joined_text = "\n".join(summary)
                     translated_text = translator.translate(joined_text)
                     
-                    # Split back into list
+                    # แยกกลับเป็นรายการ
                     if translated_text:
                          summary = translated_text.split("\n")
                     else:
-                         # Fallback if result is empty
+                         # Fallback ถ้าผลลัพธ์ว่างเปล่า
                          pass
                 except Exception as e:
                     print(f"Translation Error: {e}")
-                    # Fallback to original if translation fails
+                    # กลับไปใช้ต้นฉบับถ้าการแปลล้มเหลว
             
-            # Format as bullet points
+            # จัดรูปแบบเป็นหัวข้อย่อย
             formatted_summary = "\n".join([f"- {sentence}" for sentence in summary])
             
-            # --- Metrics Calculation ---
+            # --- การคำนวณตัวชี้วัด ---
             
-            # 1. Conciseness: (1 - summary_len / original_len) * 100
+            # 1. ความกระชับ: (1 - ความยาวสรุป / ความยาวต้นฉบับ) * 100
             original_len = len(text)
             summary_len = len(formatted_summary)
             conciseness = max(0, min(100, int((1 - (summary_len / original_len)) * 100))) if original_len > 0 else 0
             
-            # 2. Completeness (Coverage): % of Top 20 keywords present in summary
-            # Reuse 'sentence_words' logic or just re-tokenize cleaned text
+            # 2. ความครบถ้วน (Coverage): % ของคำสำคัญ 20 อันดับแรกที่พบในสรุป
+            # ใช้ตรรกะ 'sentence_words' ซ้ำ หรือตัดคำจากข้อความที่ทำความสะอาดแล้วใหม่
             all_words = []
             for s in valid_sentences:
                 all_words.extend(processor.tokenize(s))
             
-            # Get keywords (exclude stopwords)
+            # ดึงคำสำคัญ (ไม่รวมคำหยุด)
             keywords = [w.lower() for w in all_words if w.lower() not in stopwords and len(w.strip()) > 1]
             if keywords:
                  most_common = [w for w, count in Counter(keywords).most_common(20)]
                  
-                 # FIX: Use pre-translation summary for metric consistency (Language Match)
-                 # Join list back to string for tokenization
+                 # แก้ไข: ใช้สรุปก่อนแปลภาษาเพื่อความสม่ำเสมอของตัวชี้วัด (ภาษาตรงกัน)
+                 # รวมรายการกลับเป็นสตริงเพื่อตัดคำ
                  check_text = "\n".join(pre_translation_summary)
                  summary_tokens = set(processor.tokenize(check_text))
                  
@@ -164,24 +164,24 @@ class SummarizationModel:
             else:
                  completeness = 0
             
-            # 3. Accuracy (Relevance Score):
-            # Calculate how "central" the selected sentences are compared to the best possible sentence.
-            # If we picked the top sentences, the score should be high.
+            # 3. ความถูกต้อง (คะแนนความเกี่ยวข้อง):
+            # คำนวณว่าประโยคที่เลือก "เป็นใจความกลาง" แค่ไหนเมื่อเทียบกับประโยคที่ดีที่สุด
+            # ถ้าเราเลือกประโยคท็อปๆ คะแนนควรจะสูง
             if scores:
                 max_score = max(scores)
                 if max_score > 0:
-                    # Average importance of selected sentences relative to the most important sentence
-                    # This reflects "How accurate/relevant is this summary compared to the best possible single-sentence summary?"
+                    # ความสำคัญเฉลี่ยของประโยคที่เลือกเทียบกับประโยคที่สำคัญที่สุด
+                    # สิ่งนี้สะท้อนว่า "สรุปนี้ถูกต้อง/เกี่ยวข้องแค่ไหนเมื่อเทียบกับสรุปประโยคเดียวที่ดีที่สุด?"
                     selected_scores = [scores[i] for i in ranked_indices]
                     avg_selected_score = sum(selected_scores) / len(selected_scores)
-                    # Normalize: 85% base + up to 15% based on score quality
+                    # ปรับฐานคะแนน: ฐาน 85% + สูงสุด 15% ตามคุณภาพคะแนน
                     accuracy = min(100, int(85 + (avg_selected_score / max_score) * 15))
                 else:
                     accuracy = 90
             else:
                 accuracy = 90
             
-            # Average
+            # ค่าเฉลี่ย
             avg_score = int((accuracy + completeness + conciseness) / 3)
             
             metrics = {
@@ -191,7 +191,7 @@ class SummarizationModel:
                 "average": avg_score
             }
             
-            # If summary is too short, fallback
+            # ถ้าสรุปสั้นเกินไป ให้ใช้ Fallback
             if len(formatted_summary) < 50:
                  fallback_text = "\n".join([f"- {s}" for s in valid_sentences[:num_sentences]])
                  return {"summary": fallback_text, "metrics": metrics}
@@ -200,5 +200,5 @@ class SummarizationModel:
 
         except Exception as e:
             print(f"Basic Summarizer Error: {e}")
-            # Fallback
+            # แผนสำรอง (Fallback)
             return {"summary": text[:500] + "...", "metrics": None}

@@ -3,7 +3,7 @@ import os
 from typing import Union
 from fastapi import UploadFile, HTTPException
 
-# Try to import optional dependencies
+# พยายามนำเข้า Dependencies ที่เป็นตัวเลือก
 
 try:
     import pdfplumber
@@ -28,8 +28,8 @@ except ImportError:
 
 class FileProcessor:
     """
-    Class for processing various document formats (PDF, DOC, DOCX, TXT)
-    and extracting text content for summarization.
+    คลาสสำหรับการประมวลผลไฟล์เอกสารรูปแบบต่างๆ (PDF, DOC, DOCX, TXT)
+    และดึงเนื้อหาข้อความเพื่อการสรุป
     """
     
     SUPPORTED_FORMATS = {
@@ -46,7 +46,7 @@ class FileProcessor:
     
     async def extract_text_from_file(self, file: UploadFile) -> str:
         """
-        Extract text content from uploaded file based on its format.
+        ดึงเนื้อหาข้อความจากไฟล์ที่อัปโหลดโดยอิงตามรูปแบบไฟล์
         
         Args:
             file: FastAPI UploadFile object
@@ -57,15 +57,15 @@ class FileProcessor:
         Raises:
             HTTPException: If file format is not supported or extraction fails
         """
-        # Validate file size
+        # ตรวจสอบขนาดไฟล์
         content = await file.read()
         if len(content) > self.MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="ขนาดไฟล์เกิน 10MB")
         
-        # Reset file pointer
+        # รีเซ็ตตัวชี้ตำแหน่งไฟล์
         await file.seek(0)
         
-        # Determine file format
+        # ระบุรูปแบบไฟล์
         file_format = self._get_file_format(file)
         
         try:
@@ -81,7 +81,9 @@ class FileProcessor:
                 raise HTTPException(status_code=400, detail="รองรับเฉพาะไฟล์ PDF, DOC, DOCX, TXT เท่านั้น")
             
             if not text or len(text.strip()) < 10:
-                raise HTTPException(status_code=400, detail="ไม่พบเนื้อหาในไฟล์ หรือเนื้อหาสั้นเกินไป")
+                # Instead of error, return empty string to trigger OCR fallback in main.py
+                # แทนที่จะแจ้ง Error ให้คืนค่าว่างเพื่อไปทำ OCR ต่อ
+                return ""
             
             return text.strip()
             
@@ -92,13 +94,13 @@ class FileProcessor:
     
     def _get_file_format(self, file: UploadFile) -> str:
         """
-        Determine file format from content type or filename extension.
+        ระบุรูปแบบไฟล์จาก Content Type หรือนามสกุลไฟล์
         """
-        # Check content type first
+        # ตรวจสอบ Content Type ก่อน
         if file.content_type in self.SUPPORTED_FORMATS:
             return self.SUPPORTED_FORMATS[file.content_type]
         
-        # Fallback to file extension
+        # Fallback ไปที่นามสกุลไฟล์
         if file.filename:
             filename_lower = file.filename.lower()
             if filename_lower.endswith('.pdf'):
@@ -113,7 +115,7 @@ class FileProcessor:
         raise HTTPException(status_code=400, detail="ไม่สามารถระบุประเภทไฟล์ได้")
     
     async def _extract_from_pdf(self, content: bytes) -> str:
-        """Extract text from PDF file using pdfplumber (better for Thai & Lighter than PyMuPDF)"""
+        """ดึงข้อความจากไฟล์ PDF โดยใช้ pdfplumber (ดีกว่าสำหรับภาษาไทย & เบากว่า PyMuPDF)"""
         if not HAS_PDFPLUMBER:
              raise HTTPException(
                 status_code=500, 
@@ -124,8 +126,8 @@ class FileProcessor:
             text = ""
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 for page in pdf.pages:
-                    # extract_text usually preserves layout better than raw extraction
-                    # x_tolerance and y_tolerance can be adjusted if needed for Thai
+                    # extract_text มักจะรักษาเลย์เอาต์ได้ดีกว่าการดึงแบบดิบ
+                    # x_tolerance และ y_tolerance สามารถปรับได้ถ้าจำเป็นสำหรับภาษาไทย
                     page_text = page.extract_text(x_tolerance=2, y_tolerance=3) 
                     if page_text:
                         text += page_text + "\n"
@@ -133,10 +135,11 @@ class FileProcessor:
             if text.strip():
                 return text
                 
-            raise HTTPException(
-                status_code=400, 
-                detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ PDF ได้ (อาจเป็นไฟล์สแกน)"
-            )
+            if text.strip():
+                return text
+                
+            # Return empty string to signal scanned PDF
+            return ""
             
         except HTTPException:
             raise
@@ -144,7 +147,7 @@ class FileProcessor:
             raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
     
     async def _extract_from_docx(self, content: bytes) -> str:
-        """Extract text from DOCX file"""
+        """ดึงข้อความจากไฟล์ DOCX"""
         if not HAS_DOCX2TXT and not HAS_PYTHON_DOCX:
             raise HTTPException(
                 status_code=500, 
@@ -154,16 +157,16 @@ class FileProcessor:
         try:
             text = ""
             
-            # Method 1: Using docx2txt (simpler and more reliable)
+            # วิธีที่ 1: ใช้ docx2txt (ง่ายกว่าและเชื่อถือได้มากกว่า)
             if HAS_DOCX2TXT:
                 try:
                     text = docx2txt.process(io.BytesIO(content))
                     if text.strip():
                         return text
                 except Exception:
-                    pass  # Try python-docx as fallback
+                    pass  # ลองใช้ python-docx เป็น fallback
             
-            # Method 2: Using python-docx as fallback
+            # วิธีที่ 2: ใช้ python-docx เป็น fallback
             if HAS_PYTHON_DOCX:
                 try:
                     doc = Document(io.BytesIO(content))
@@ -173,7 +176,7 @@ class FileProcessor:
                         if paragraph.text.strip():
                             paragraphs.append(paragraph.text.strip())
                     
-                    # Also extract text from tables
+                    # ดึงข้อความจากตารางด้วย
                     for table in doc.tables:
                         for row in table.rows:
                             for cell in row.cells:
@@ -186,7 +189,7 @@ class FileProcessor:
                 except Exception:
                     pass
             
-            # If both methods fail
+            # ถ้าทั้งสองวิธีล้มเหลว
             raise HTTPException(
                 status_code=500, 
                 detail="ไม่สามารถอ่านเนื้อหาจากไฟล์ DOCX ได้ ไฟล์อาจเสียหายหรือไม่ถูกต้อง"
@@ -198,7 +201,7 @@ class FileProcessor:
             raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ DOCX ได้: {str(e)}")
     
     async def _extract_from_doc(self, content: bytes) -> str:
-        """Extract text from DOC file (legacy format)"""
+        """ดึงข้อความจากไฟล์ DOC (รูปแบบเก่า)"""
         if not HAS_DOCX2TXT:
             raise HTTPException(
                 status_code=400, 
@@ -206,8 +209,8 @@ class FileProcessor:
             )
         
         try:
-            # For .doc files, we'll try to use docx2txt which sometimes works
-            # Note: .doc support is limited, recommend users to convert to .docx
+            # สำหรับไฟล์ .doc เราจะลองใช้ docx2txt ซึ่งบางครั้งก็ใช้ได้
+            # หมายเหตุ: การรองรับ .doc มีจำกัด แนะนำให้ผู้ใช้แปลงเป็น .docx
             text = docx2txt.process(io.BytesIO(content))
             
             if not text.strip():
@@ -227,9 +230,9 @@ class FileProcessor:
             )
     
     async def _extract_from_txt(self, content: bytes) -> str:
-        """Extract text from TXT file"""
+        """ดึงข้อความจากไฟล์ TXT"""
         try:
-            # Try different encodings
+            # ลองใช้การเข้ารหัสแบบต่างๆ
             encodings = ['utf-8', 'utf-8-sig', 'cp874', 'iso-8859-1', 'windows-1252']
             
             for encoding in encodings:
@@ -239,7 +242,7 @@ class FileProcessor:
                 except UnicodeDecodeError:
                     continue
             
-            # If all encodings fail, use utf-8 with error handling
+            # ถ้าการเข้ารหัสทั้งหมดล้มเหลว ให้ใช้ utf-8 พร้อมการจัดการข้อผิดพลาด
             text = content.decode('utf-8', errors='replace')
             return text
             
@@ -248,7 +251,7 @@ class FileProcessor:
     
     def validate_file(self, file: UploadFile) -> bool:
         """
-        Validate uploaded file format and size.
+        ตรวจสอบรูปแบบและขนาดไฟล์ที่อัปโหลด
         
         Args:
             file: FastAPI UploadFile object
@@ -259,11 +262,11 @@ class FileProcessor:
         Raises:
             HTTPException: If file is invalid
         """
-        # Check if file exists
+        # ตรวจสอบว่ามีไฟล์อยู่หรือไม่
         if not file or not file.filename:
             raise HTTPException(status_code=400, detail="ไม่พบไฟล์")
         
-        # Check file format
+        # ตรวจสอบรูปแบบไฟล์
         try:
             self._get_file_format(file)
         except HTTPException:
