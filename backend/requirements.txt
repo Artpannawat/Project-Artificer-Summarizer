@@ -14,5 +14,4 @@ requests
 cryptography
 deep-translator
 docx2txt
-Pillow
-pdfplumber
+pypdf

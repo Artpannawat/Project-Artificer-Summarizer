@@ -12,3 +12,4 @@ dnspython
 certifi
 requests
 cryptography
+pypdf
