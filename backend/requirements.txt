@@ -1,5 +1,5 @@
 fastapi
-uvicorn[standard]
+uvicorn
 pydantic>=2
 python-docx
 email-validator
@@ -8,12 +8,9 @@ motor
 passlib[bcrypt]
 PyJWT
 python-multipart
-google-generativeai
 dnspython
 certifi
 requests
-google-auth
-cachecontrol
 cryptography
 deep-translator
 docx2txt
