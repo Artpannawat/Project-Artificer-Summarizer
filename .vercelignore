@@ -1,0 +1,16 @@
+.env
+.venue
+.venv
+venv
+env
+backend/venv
+backend/.venv
+*.pyc
+__pycache__
+.git
+.github
+.DS_Store
+frontend/node_modules
+node_modules
+test_document.txt
+uploaded_media_*
