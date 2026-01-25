@@ -1,6 +1,6 @@
 fastapi
 pydantic>=2
-pydantic>=2
+
 python-docx
 email-validator
 python-decouple

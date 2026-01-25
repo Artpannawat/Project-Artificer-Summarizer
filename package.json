@@ -2,7 +2,7 @@
     "name": "artificer-monorepo",
     "version": "1.0.0",
     "scripts": {
-        "build": "cd frontend && npm install && npm run build && cd .. && rm -rf dist && mv frontend/dist dist"
+        "build": "cd frontend && npm install && npm run build && cd .. && rm -rf dist && mv frontend/dist dist && rm -rf frontend/node_modules"
     },
     "devDependencies": {
         "vercel": "latest"
