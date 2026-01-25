@@ -24,9 +24,18 @@ frontend/dist
 __pycache__
 **/__pycache__
 
-# Large Media/Test Files
+# Explicitly ignore backend venv
+backend/venv
+backend/.venv
+backend/__pycache__
+
+# Large Media/Test Files (Recursive)
+**/*.pdf
+**/*.docx
+**/*.mp4
+**/*.mov
+**/*.zip
+**/*.tar
+**/*.gz
 test_document.txt
 uploaded_media_*
-*.pdf
-*.docx
-*.mp4
