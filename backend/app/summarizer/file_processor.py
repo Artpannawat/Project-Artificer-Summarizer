@@ -115,29 +115,34 @@ class FileProcessor:
         raise HTTPException(status_code=400, detail="ไม่สามารถระบุประเภทไฟล์ได้")
     
     async def _extract_from_pdf(self, content: bytes) -> str:
-        """ดึงข้อความจากไฟล์ PDF โดยใช้ pypdf (Lightweight for Vercel)"""
-        try:
-            import pypdf
-        except ImportError:
+        """ดึงข้อความจากไฟล์ PDF โดยใช้ pdfplumber (ดีกว่าสำหรับภาษาไทย & เบากว่า PyMuPDF)"""
+        if not HAS_PDFPLUMBER:
              raise HTTPException(
                 status_code=500, 
-                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี pypdf installed"
+                detail="ไม่สามารถอ่านไฟล์ PDF ได้ เนื่องจากไม่มี pdfplumber installed"
             )
         
         try:
             text = ""
-            reader = pypdf.PdfReader(io.BytesIO(content))
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                for page in pdf.pages:
+                    # extract_text มักจะรักษาเลย์เอาต์ได้ดีกว่าการดึงแบบดิบ
+                    # x_tolerance และ y_tolerance สามารถปรับได้ถ้าจำเป็นสำหรับภาษาไทย
+                    page_text = page.extract_text(x_tolerance=2, y_tolerance=3) 
+                    if page_text:
+                        text += page_text + "\n"
             
+            if text.strip():
+                return text
+                
             if text.strip():
                 return text
                 
             # Return empty string to signal scanned PDF
             return ""
             
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"ไม่สามารถอ่านไฟล์ PDF ได้: {str(e)}")
     
